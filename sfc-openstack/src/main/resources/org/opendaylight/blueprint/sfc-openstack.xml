@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<blueprint xmlns="http://www.osgi.org/xmlns/blueprint/v1.0.0"
+           xmlns:odl="http://opendaylight.org/xmlns/blueprint/v1.0.0"
+           odl:use-default-for-reference-types="true">
+
+    <reference id="dataBroker"
+               interface="org.opendaylight.controller.md.sal.binding.api.DataBroker"
+               odl:type="default" />
+
+    <bean id="sfcOpenstackProvider"
+          class="org.opendaylight.sfc.sfc_openstack.provider.SfcOpenstackProvider">
+    </bean>
+    <bean id="sfcOpenstackRpc"
+          class="org.opendaylight.sfc.sfc_openstack.provider.SfcOpenstackRpc">
+        <argument ref="dataBroker"/>
+    </bean>
+    <odl:rpc-implementation ref="sfcOpenstackRpc"/>
+
+    <bean id="sfcOpenstackListener"
+          class="org.opendaylight.sfc.sfc_openstack.listener.SfcOpenstackListener"
+          init-method="init" destroy-method="close">
+        <argument ref="dataBroker" />
+    </bean>
+
+</blueprint>

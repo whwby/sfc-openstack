@@ -1,0 +1,28 @@
+//PUT:http://172.31.4.128:8181/restconf/config/sfc-openstack-test:sff-list
+{
+  "sff-list": {
+    "sff-entry": [
+      {
+        "name": "sffname",
+        "node": "sffnode",
+        "bridge-name": "sffbridge",
+        "sf-list":{
+          "sf-entry":[
+            {
+              "name":"sf-name",
+              "type-desc": "firewall",
+              "mac":"d0:50:Dd:9b:6C:8e",
+              "port-id":"9527"
+            },
+            {
+              "name":"sf-name2",
+              "type-desc":"dpi",
+              "ip":"172.31.10.14",
+              "port":"6633"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

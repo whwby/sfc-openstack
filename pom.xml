@@ -93,11 +93,6 @@
             </dependency>
             <dependency>
                 <groupId>org.opendaylight.sfc</groupId>
-                <artifactId>sfc-test-consumer</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.opendaylight.sfc</groupId>
                 <artifactId>sfc-openflow-utils</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -109,6 +104,11 @@
             <dependency>
                 <groupId>org.opendaylight.sfc</groupId>
                 <artifactId>sfc-genius</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.opendaylight.sfc</groupId>
+                <artifactId>sfc-openstack</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -156,20 +156,6 @@
                 <type>pom</type>
             </dependency>
             <dependency>
-                <groupId>org.opendaylight.netconf</groupId>
-                <artifactId>restconf-artifacts</artifactId>
-                <version>${restconf.version}</version>
-                <scope>import</scope>
-                <type>pom</type>
-            </dependency>
-            <dependency>
-                <groupId>org.opendaylight.netconf</groupId>
-                <artifactId>netconf-artifacts</artifactId>
-                <version>${netconf.parent.version}</version>
-                <scope>import</scope>
-                <type>pom</type>
-            </dependency>
-            <dependency>
                 <groupId>org.opendaylight.ovsdb</groupId>
                 <artifactId>southbound-api</artifactId>
                 <version>${ovsdb.southbound.version}</version>
@@ -193,24 +179,14 @@
     <modules>
         <module>sfc-model</module>
         <module>sfc-provider</module>
-        <module>sfc-test-consumer</module>
-        <module>sfc-ui</module>
-        <module>sfc-sb-rest</module>
-        <module>sfclisp</module>
         <module>sfc-util</module>
         <module>sfc-scf-openflow</module>
         <module>sfc-ovs</module>
-        <module>sfc-netconf</module>
-        <module>sfc-jsonconfig</module>
-        <module>sfc-vnfm-spi</module>
-        <module>sfc-vnfm-tacker</module>
-        <module>sfc-pot</module>
         <module>features</module>
         <module>sfc-karaf</module>
-        <module>sfc-bootstrap</module>
         <module>sfc-renderers</module>
-        <module>sfc-rsp-manager</module>
         <module>sfc-genius</module>
+        <module>sfc-openstack</module>
     </modules>
 
     <build>

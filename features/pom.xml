@@ -65,25 +65,11 @@
       <type>xml</type>
     </dependency>
     <dependency>
-      <groupId>org.opendaylight.netconf</groupId>
-      <artifactId>features-restconf</artifactId>
-      <version>${restconf.version}</version>
-      <classifier>features</classifier>
-      <type>xml</type>
-    </dependency>
-    <dependency>
         <groupId>org.opendaylight.ovsdb</groupId>
         <artifactId>southbound-features</artifactId>
         <version>${ovsdb.southbound.version}</version>
         <classifier>features</classifier>
         <type>xml</type>
-    </dependency>
-    <dependency>
-      <groupId>org.opendaylight.netconf</groupId>
-      <artifactId>features-netconf-connector</artifactId>
-      <version>${netconf.parent.version}</version>
-      <classifier>features</classifier>
-      <type>xml</type>
     </dependency>
     <dependency>
         <groupId>org.opendaylight.openflowplugin</groupId>
@@ -131,22 +117,17 @@
     </dependency>
     <dependency>
         <groupId>${project.groupId}</groupId>
-        <artifactId>sfc-netconf</artifactId>
+        <artifactId>sfc-ovs</artifactId>
         <version>${project.version}</version>
     </dependency>
     <dependency>
-        <groupId>${project.groupId}</groupId>
-        <artifactId>sfc-ovs</artifactId>
+        <groupId>org.opendaylight.sfc</groupId>
+        <artifactId>sfc-openstack</artifactId>
         <version>${project.version}</version>
     </dependency>
     <dependency>
         <groupId>${project.groupId}</groupId>
         <artifactId>sfc-scf-openflow</artifactId>
-        <version>${project.version}</version>
-    </dependency>
-    <dependency>
-        <groupId>${project.groupId}</groupId>
-        <artifactId>sfc-ios-xe-renderer</artifactId>
         <version>${project.version}</version>
     </dependency>
     <dependency>
@@ -159,51 +140,6 @@
         <artifactId>sfc-openflow-renderer</artifactId>
         <version>${project.version}</version>
     </dependency>
-    <dependency>
-        <groupId>${project.groupId}</groupId>
-        <artifactId>sfc-vpp-renderer</artifactId>
-        <version>${project.version}</version>
-    </dependency>
-    <dependency>
-        <groupId>${project.groupId}</groupId>
-        <artifactId>sfclisp</artifactId>
-        <version>${project.version}</version>
-    </dependency>
-    <dependency>
-        <groupId>${project.groupId}</groupId>
-        <artifactId>sfc-sb-rest</artifactId>
-        <version>${project.version}</version>
-    </dependency>
-    <dependency>
-        <groupId>${project.groupId}</groupId>
-        <artifactId>sfc-pot</artifactId>
-        <version>${project.version}</version>
-    </dependency>
-      <dependency>
-        <groupId>${project.groupId}</groupId>
-        <artifactId>sfc-test-consumer</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>${project.groupId}</groupId>
-        <artifactId>sfc-ui-bundle</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>${project.groupId}</groupId>
-        <artifactId>sfc-bootstrap</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>${project.groupId}</groupId>
-        <artifactId>sfc-vnfm-spi</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>${project.groupId}</groupId>
-        <artifactId>sfc-vnfm-tacker</artifactId>
-        <version>${project.version}</version>
-      </dependency>
       <dependency>
         <groupId>${project.groupId}</groupId>
         <artifactId>sfc-genius</artifactId>

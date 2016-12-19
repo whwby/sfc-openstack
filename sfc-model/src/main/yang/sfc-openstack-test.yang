@@ -1,0 +1,127 @@
+module sfc-openstack-test {
+    namespace "urn:cisco:params:xml:ns:yang:sfc-openstack";
+
+    prefix sfc-openstack;
+
+    import ietf-inet-types {
+        prefix inet;
+        revision-date 2013-07-15;
+    }
+    import ietf-yang-types {
+        prefix yang;
+        revision-date 2013-07-15;
+    }
+
+    organization "openstack Systems, Inc.";
+    description
+        "this is openstack test";
+
+    revision 2015-12-12 {
+        description
+            "sfc-openstack revision";
+        reference
+            "sfc-yang";
+    }
+
+    grouping encap-eth {
+        leaf mac {
+            type yang:mac-address;
+        }
+        leaf port-id {
+            type string;
+            description
+                "the sf connected to the ovs port id";
+        }
+    }
+    grouping encap-ip {
+        leaf ip {
+            type inet:ip-address;
+        }
+        leaf port {
+            type inet:port-number;
+        }
+    }
+
+    grouping encap-type {
+        choice encap-type1 {
+            mandatory true;
+            case ether {
+                uses encap-eth;
+            }
+            case ip {
+                uses encap-ip;
+            }
+        }
+    }
+
+    grouping sf-base {
+        description
+            "sf base";
+        leaf name {
+            type string;
+        }
+        leaf type-desc {
+            type string;
+            default "firewall";
+        }
+        uses encap-type;
+        leaf sff-name {
+            type string;
+        }
+    }
+
+    grouping sff-base {
+        description
+            "sff base";
+        leaf name {
+            type string;
+        }
+        leaf node {
+            type string;
+        }
+        leaf bridge-name {
+            type string;
+        }
+        container sf-list {
+            list sf-entry {
+            key "name";
+                uses sf-base;
+            }
+        }
+    }
+
+    container sff-list {
+        list sff-entry {
+            key "name";
+            uses sff-base;
+        }
+    }
+
+    rpc delete-sff {
+        input {
+            leaf name {
+                type string;
+                    mandatory true;
+            }
+        }
+    }
+
+    rpc put-sff {
+        input {
+            uses sff-base;
+        }
+    }
+
+    rpc read-sff {
+        input {
+            leaf name {
+                type string;
+                mandatory true;
+            }
+        }
+        output {
+            uses sff-base;
+        }
+    }
+
+}

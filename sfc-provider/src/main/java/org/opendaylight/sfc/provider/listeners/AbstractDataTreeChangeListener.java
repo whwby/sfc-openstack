@@ -35,7 +35,7 @@ public abstract class AbstractDataTreeChangeListener<T extends DataObject>
             case SUBTREE_MODIFIED:
                 update(dataObjectModification.getDataBefore(), dataObjectModification.getDataAfter());
                 break;
-            case DELETE:
+        case DELETE:
                 remove(dataObjectModification.getDataBefore());
                 break;
             case WRITE:
