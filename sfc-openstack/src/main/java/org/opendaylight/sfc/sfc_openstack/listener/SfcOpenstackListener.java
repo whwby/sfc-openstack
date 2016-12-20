@@ -13,12 +13,15 @@ package org.opendaylight.sfc.sfc_openstack.listener;
 import org.opendaylight.controller.md.sal.binding.api.DataBroker;
 import org.opendaylight.controller.md.sal.binding.api.DataTreeIdentifier;
 import org.opendaylight.controller.md.sal.common.api.data.LogicalDatastoreType;
-import org.opendaylight.yang.gen.v1.urn.cisco.params.xml.ns.yang.sfc.openstack.rev151212.encap.type.EncapType1;
-import org.opendaylight.yang.gen.v1.urn.cisco.params.xml.ns.yang.sfc.openstack.rev151212.sff.base.SfList;
-import org.opendaylight.yang.gen.v1.urn.cisco.params.xml.ns.yang.sfc.openstack.rev151212.sff.base.sf.list.SfEntry;
-import org.opendaylight.yang.gen.v1.urn.cisco.params.xml.ns.yang.sfc.openstack.rev151212.sff.list.SffEntry;
-import org.opendaylight.yang.gen.v1.urn.cisco.params.xml.ns.yang.sfc.openstack.rev151212.SffList;
-import org.opendaylight.yang.gen.v1.urn.cisco.params.xml.ns.yang.sfc.openstack.rev151212.encap.type.encap.type1.*;
+import org.opendaylight.yang.gen.v1.urn.cisco.params.xml.ns.yang.sfc.openstack.rev161218.SfcEntries;
+import org.opendaylight.yang.gen.v1.urn.cisco.params.xml.ns.yang.sfc.openstack.rev161218.sfc.base.SfcMatch;
+import org.opendaylight.yang.gen.v1.urn.cisco.params.xml.ns.yang.sfc.openstack.rev161218.sfc.base.SfpEntries;
+import org.opendaylight.yang.gen.v1.urn.cisco.params.xml.ns.yang.sfc.openstack.rev161218.sfc.base.sfp.entries.sfp.sf.entries.SfpSfEntry;
+import org.opendaylight.yang.gen.v1.urn.cisco.params.xml.ns.yang.sfc.openstack.rev161218.sfc.entries.SfcEntry;
+import org.opendaylight.yang.gen.v1.urn.cisco.params.xml.ns.yang.sfc.openstack.rev161218.sfc.base.sfp.entries.Source;
+import org.opendaylight.yang.gen.v1.urn.cisco.params.xml.ns.yang.sfc.openstack.rev161218.sfc.base.sfp.entries.Destination;
+import org.opendaylight.yang.gen.v1.urn.cisco.params.xml.ns.yang.sfc.openstack.rev161218.sfc.base.sfp.entries.SfpSfEntries;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.flow.types.rev131026.flow.Match;
 import org.opendaylight.yangtools.concepts.ListenerRegistration;
 import org.opendaylight.yangtools.yang.binding.InstanceIdentifier;
 import org.slf4j.LoggerFactory;
@@ -27,7 +30,7 @@ import org.opendaylight.sfc.sfc_openstack.SfcOpenstackUtil;
 import org.opendaylight.sfc.sfc_openstack.SfcNshHeader;
 
 
-public class SfcOpenstackListener extends SfcOpenstackAbstractListener<SffEntry> {
+public class SfcOpenstackListener extends SfcOpenstackAbstractListener<SfcEntry> {
     private static final Logger LOG = LoggerFactory.getLogger(SfcOpenstackListener.class);
     private final DataBroker dataBroker;
     private ListenerRegistration<SfcOpenstackListener> listenerRegistration;
@@ -37,11 +40,11 @@ public class SfcOpenstackListener extends SfcOpenstackAbstractListener<SffEntry>
     }
 
     public void init() {
-        LOG.info("Initializing openstack listener...");
+        LOG.info("Initializing openstack 0 listener...");
         registerListeners();
     }
     public void close() throws Exception {
-        LOG.info("Closing listener...");
+        LOG.info("Closing listener 0 ...");
         if(listenerRegistration != null) {
             listenerRegistration.close();
         }
@@ -49,71 +52,220 @@ public class SfcOpenstackListener extends SfcOpenstackAbstractListener<SffEntry>
 
     private void registerListeners() {
         LOG.info("i am in Initializing openstack registerListeners");
-        final DataTreeIdentifier<SffEntry> treeId = new DataTreeIdentifier<>(LogicalDatastoreType.CONFIGURATION,
-                InstanceIdentifier.create(SffList.class).child(SffEntry.class));
+        final DataTreeIdentifier<SfcEntry> treeId = new DataTreeIdentifier<>(LogicalDatastoreType.CONFIGURATION,
+                InstanceIdentifier.create(SfcEntries.class).child(SfcEntry.class));
         listenerRegistration = dataBroker.registerDataTreeChangeListener(treeId,this);
     }
 
     @Override
-    public void add(SffEntry sffEntry) {
-        if (sffEntry != null) {
-            LOG.info("Adding sff entry: {}", sffEntry.getName());
+    public void add(SfcEntry sfcEntry) {
+        if (sfcEntry != null) {
+            LOG.info("Adding sfc entry: {}", sfcEntry.getName());
             //create flow tables
 
-            SfList sfList = sffEntry.getSfList();
-            SfEntry sfEntry = sfList.getSfEntry().get(0);
-            LOG.info("Adding sf entry: {}", sfEntry.toString());
-            EncapType1 encapType = sfEntry.getEncapType1();
-            String dstMac = "33:11:11:22:22:22";
-            Long outport = 3L;
-            if (encapType instanceof Ether) {
-                Ether ether = (Ether) encapType;
-                dstMac = ether.getMac().getValue();
+            SfpEntries sfpEntries = sfcEntry.getSfpEntries();
+            Source source = sfpEntries.getSource();
+            Destination destination = sfpEntries.getDestination();
+            SfpSfEntries sfpSfEntries = sfpEntries.getSfpSfEntries();
 
-                outport = Long.valueOf(ether.getPortId()).longValue();
-                LOG.info("Adding ether dstMac: {}<>{}", dstMac,outport);
+            SfpSfEntry sfpSfEntry = sfpSfEntries.getSfpSfEntry().get(1);
+            Long nsp = 60L + sfcEntry.getSfcNsp();
+
+            String sBridgeId = SfcOpenstackUtil.getBridgeID(source.getBridgeName(),source.getNodeIp().toString());
+            String sfBridgeId = SfcOpenstackUtil.getBridgeID(sfpSfEntry.getBridgeName(),sfpSfEntry.getNodeIp().toString());
+            String sSfcBridgeId = SfcOpenstackUtil.getBridgeID("br-sfc",source.getNodeIp().toString());
+            String sfSfcBridgeId = SfcOpenstackUtil.getBridgeID("br-sfc",sfpSfEntry.getNodeIp().toString());
+            String dBridgeId = SfcOpenstackUtil.getBridgeID(destination.getBridgeName(),destination.getNodeIp().toString());
+            String dSfcBridgeId = SfcOpenstackUtil.getBridgeID("br-sfc",destination.getNodeIp().toString());
+            //suppose only a sf created
+
+            createSource2SF(source,sfpSfEntry,nsp,compareLocation1(source,sfpSfEntry),sfcEntry.getSfcMatch());
+            createSF2Destination(sfpSfEntry,destination,nsp,compareLocation1(source,sfpSfEntry));
+
+            //create other flows in br-int and br-sfc
+
+            SfcOpenstackUtil.createOtherIntFlows(sBridgeId,(short)0);
+            SfcOpenstackUtil.createOtherSfcFlows(sSfcBridgeId,(short)0);
+
+            if (sfBridgeId != sBridgeId) {
+                SfcOpenstackUtil.createOtherIntFlows(sfBridgeId,(short)0);
+                SfcOpenstackUtil.createOtherSfcFlows(sfSfcBridgeId,(short)0);
             }
-            String datapathId = sffEntry.getNode();
+            if (dBridgeId != sBridgeId && dBridgeId != sBridgeId) {
+                SfcOpenstackUtil.createOtherIntFlows(dBridgeId,(short)0);
+                SfcOpenstackUtil.createOtherSfcFlows(dSfcBridgeId,(short)0);
+            }
 
-            SfcNshHeader sfcNshHeader = new SfcNshHeader()
-                    .setNshNsp(66L)
-                    .setEncapSrc("11:11:11:22:22:22")
-                    .setEncapDst(dstMac)
-                    .setNshStartNsi((short)255)
-                    .setNshMetaC1(55L)
-                    .setNshMetaC2(56L)
-                    .setNshMetaC3(57L)
-                    .setNshMetaC4(58L);
-            String nodeName = "openflow:" + datapathId;
-            SfcOpenstackUtil.createClassifierInFlow(nodeName,
-                    null,null,sfcNshHeader,outport);
+
+
         }
     }
 
+
+
     @Override
-    public void remove(SffEntry sffEntry) {
-        if (sffEntry != null) {
-            LOG.info("Deleting Sff entry: {}", sffEntry.getName());
+    public void remove(SfcEntry sfcEntry) {
+        if (sfcEntry != null) {
+            LOG.info("Deleting Sfc entry: {}", sfcEntry.getName());
             //delete flow tables
         }
     }
 
     @Override
-    protected void update(SffEntry orignalSff, SffEntry updateSff) {
+    protected void update(SfcEntry orignalSfc, SfcEntry updateSfc) {
 
-        String nodeName = "openflow:" + updateSff.getNode();
-        Long outport = 2L;
-        if (orignalSff != null) {
-            LOG.info("Updating sff entry: {}>>{}>>{}", orignalSff.getName(), updateSff.getNode(),outport);
-            if(!compareSff(orignalSff,updateSff)) {
-                //delete orignal sff, add update sff.
-            SfcOpenstackUtil.createTestFlow(nodeName,outport);
-            }
-        }
+
     }
 
-    private boolean compareSff(SffEntry orignalSff, SffEntry updateSff) {
-        //compare sff
+
+    private void createSource2SF(Source source, SfpSfEntry sfpSfEntry , Long nsp, Boolean sameNode,
+                                        SfcMatch sfcMatch) {
+        String sBridgeId = SfcOpenstackUtil.getBridgeID(source.getBridgeName(),source.getNodeIp().toString());
+        String sfBridgeId = SfcOpenstackUtil.getBridgeID(sfpSfEntry.getBridgeName(),sfpSfEntry.getNodeIp().toString());
+        String sSfcBridgeId = SfcOpenstackUtil.getBridgeID("br-sfc",source.getNodeIp().toString());
+        String sfSfcBridgeId = SfcOpenstackUtil.getBridgeID("br-sfc",sfpSfEntry.getNodeIp().toString());
+        if (sameNode) {
+            Match  match = SfcOpenstackUtil.createMatch(sfcMatch.getSrcIp(), sfcMatch.getDstIp());
+            Long sfport = SfcOpenstackUtil.getSfcPort(sfpSfEntry.getBridgeName(),
+                    sfpSfEntry.getNodeIp().toString(),
+                    sfpSfEntry.getPortName());
+            SfcNshHeader sfcNshHeader = SfcOpenstackUtil.createSfcNshHeader(nsp,
+                    (short)255,
+                    sfpSfEntry.getSfMac().toString());
+
+            LOG.info("IN openstack listener ADD step1 is: {} <> {}" + sBridgeId,sfport);
+            SfcOpenstackUtil.createFirstFlowInSameNode(sBridgeId,(short)0,match,sfcNshHeader,sfport);
+        }
+        else {
+            //first in node1,create br-int flow
+            Match  match = SfcOpenstackUtil.createMatch(sfcMatch.getSrcIp(),
+                    sfcMatch.getDstIp());
+            Long port = SfcOpenstackUtil.getSfcPort(source.getBridgeName(),
+                    source.getNodeIp().toString(),
+                    "int2sfc");
+            SfcNshHeader sfcNshHeader = SfcOpenstackUtil.createSfcNshHeader(nsp,
+                    (short)255,null);
+            LOG.info("IN openstack listener ADD step21 is: {} <> {}" + sBridgeId,port);
+            SfcOpenstackUtil.createFirstFlowInDifferentNode(sBridgeId,(short)0,match,sfcNshHeader,port);
+
+            //create br-sfc flow
+            Long sfcportIn = SfcOpenstackUtil.getSfcPort("br-sfc",
+                    source.getNodeIp().toString(), "sfc2int");
+            Long sfcportOut = SfcOpenstackUtil.getSfcPort("br-sfc",
+                    source.getNodeIp().toString(), "spt6633");
+
+            String inPortConnId = sSfcBridgeId + ":" +  sfcportIn;
+            Match  sfcmatch = SfcOpenstackUtil.createNshMatch(nsp,(short)255, inPortConnId);
+            SfcOpenstackUtil.createSfcFlows(sBridgeId,(short)0, sfcmatch, sfcportOut);
+
+
+            //second in node2, create br-sfc flow
+            Long sfcportIn2 = SfcOpenstackUtil.getSfcPort("br-sfc",
+                    sfpSfEntry.getNodeIp().toString(), "sfc2int");
+            Long sfcportOut2 = SfcOpenstackUtil.getSfcPort("br-sfc",
+                    sfpSfEntry.getNodeIp().toString(), "spt6633");
+
+            String inPortConnId2 = sfSfcBridgeId + ":" +  sfcportOut2;
+            Match  sfcmatch2 = SfcOpenstackUtil.createNshMatch(nsp,(short)255, inPortConnId2);
+            SfcOpenstackUtil.createSfcFlows(sfBridgeId,(short)0, sfcmatch2, sfcportIn2);
+
+            //create br-int flow
+            Long sfportIn = SfcOpenstackUtil.getSfcPort(sfpSfEntry.getBridgeName(),
+                    sfpSfEntry.getNodeIp().toString(), "int2sfc");
+            String inPortConnId3 = sfBridgeId + ":" +  sfportIn;
+            Match  sfmatch = SfcOpenstackUtil.createNshMatch(nsp,(short)255, inPortConnId3);
+            Long sfport = SfcOpenstackUtil.getSfcPort(sfpSfEntry.getBridgeName(),
+                    sfpSfEntry.getNodeIp().toString(), sfpSfEntry.getPortName());
+
+            SfcNshHeader sfcNshHeader2 = SfcOpenstackUtil.createSfcNshHeader(nsp,
+                    (short)255, sfpSfEntry.getSfMac().toString());
+
+            LOG.info("IN openstack listener ADD step22 is: {} <> {}" + sfBridgeId,sfport);
+            SfcOpenstackUtil.createFlowToVNF(sfBridgeId,(short)0,sfmatch,sfcNshHeader2, sfport);
+        }
+
+    }
+
+    private void createSF2Destination(SfpSfEntry sfpSfEntry, Destination destination, Long nsp, Boolean sameNode) {
+        String sfBridgeId = SfcOpenstackUtil.getBridgeID(sfpSfEntry.getBridgeName(),sfpSfEntry.getNodeIp().toString());
+        String dBridgeId = SfcOpenstackUtil.getBridgeID(destination.getBridgeName(),destination.getNodeIp().toString());
+        String sfSfcBridgeId = SfcOpenstackUtil.getBridgeID("br-sfc",sfpSfEntry.getNodeIp().toString());
+        String dSfcBridgeId = SfcOpenstackUtil.getBridgeID("br-sfc",destination.getNodeIp().toString());
+        if (sameNode) {
+            Long sfport = SfcOpenstackUtil.getSfcPort(sfpSfEntry.getBridgeName(),
+                    sfpSfEntry.getNodeIp().toString(), sfpSfEntry.getPortName());
+            String inPortConnId = dBridgeId + ":" +  sfport;
+            Match  match = SfcOpenstackUtil.createNshMatch(nsp,(short)254, inPortConnId);
+
+            Long dport = SfcOpenstackUtil.getSfcPort(destination.getBridgeName(),
+                    destination.getNodeIp().toString(),
+                    destination.getPortName());
+            LOG.info("IN openstack listener ADD step3 is: {} <> {}" + dBridgeId,sfport);
+            SfcOpenstackUtil.createFlowFromVNF(dBridgeId,(short)0,match,dport);
+        }
+        else {
+            //first step1, create br-int flow
+            Long sfport = SfcOpenstackUtil.getSfcPort(sfpSfEntry.getBridgeName(),
+                    sfpSfEntry.getNodeIp().toString(), sfpSfEntry.getPortName());
+            String inPortConnId = sfBridgeId + ":" +  sfport;
+            Match  sfmatch = SfcOpenstackUtil.createNshMatch(nsp,(short)254, inPortConnId);
+            Long port = SfcOpenstackUtil.getSfcPort(sfpSfEntry.getBridgeName(),
+                    sfpSfEntry.getNodeIp().toString(),
+                    "int2sfc");
+
+            LOG.info("IN openstack listener ADD step41 is: {} <> {}" + sfBridgeId,sfport);
+            SfcOpenstackUtil.createFlowToNormal(sfBridgeId,(short)0,sfmatch,port);
+
+            //create br-sfc flow
+            Long sfcportIn = SfcOpenstackUtil.getSfcPort("br-sfc",
+                    sfpSfEntry.getNodeIp().toString(), "sfc2int");
+            Long sfcportOut = SfcOpenstackUtil.getSfcPort("br-sfc",
+                    sfpSfEntry.getNodeIp().toString(), "spt6633");
+
+            String inPortConnId2 = sfSfcBridgeId + ":" +  sfcportIn;
+            Match  sfcmatch = SfcOpenstackUtil.createNshMatch(nsp,(short)254, inPortConnId2);
+            SfcOpenstackUtil.createSfcFlows(sfBridgeId,(short)0, sfcmatch, sfcportOut);
+
+
+            //first step2, create br-sfc flow
+            Long sfcportIn2 = SfcOpenstackUtil.getSfcPort("br-sfc",
+                    destination.getNodeIp().toString(), "sfc2int");
+            Long sfcportOut2 = SfcOpenstackUtil.getSfcPort("br-sfc",
+                    destination.getNodeIp().toString(), "spt6633");
+
+            String inPortConnId3 = dSfcBridgeId + ":" +  sfcportOut2;
+            Match  sfcmatch2 = SfcOpenstackUtil.createNshMatch(nsp,(short)254, inPortConnId3);
+            SfcOpenstackUtil.createSfcFlows(sfBridgeId,(short)0, sfcmatch2, sfcportIn2);
+
+            //create br-int flow
+            Long sfcport = SfcOpenstackUtil.getSfcPort(destination.getBridgeName(),
+                    destination.getNodeIp().toString(), "int2sfc");
+            String inPortConnId4 = dBridgeId + ":" +  sfcport;
+            Match  dmatch = SfcOpenstackUtil.createNshMatch(nsp,(short)254, inPortConnId4);
+            Long dport = SfcOpenstackUtil.getSfcPort(destination.getBridgeName(),
+                    destination.getNodeIp().toString(),
+                    destination.getPortName());
+
+            LOG.info("IN openstack listener ADD step42 is: {} <> {}" + dBridgeId,dport);
+            SfcOpenstackUtil.createFlowFromVNF(dBridgeId,(short)0,dmatch,dport);
+        }
+
+    }
+
+    private Boolean compareLocation1(Source source, SfpSfEntry sfpSfEntry) {
+        if (source.getBridgeName() == sfpSfEntry.getBridgeName() &&
+                source.getNodeIp() == sfpSfEntry.getNodeIp()) {
+            return true;
+        }
         return false;
     }
+
+    private Boolean compareLocation2(SfpSfEntry sfpSfEntry, Destination destination) {
+        if(sfpSfEntry.getBridgeName() == destination.getBridgeName() &&
+                sfpSfEntry.getNodeIp() == destination.getNodeIp()) {
+            return true;
+        }
+        return false;
+    }
+
 }

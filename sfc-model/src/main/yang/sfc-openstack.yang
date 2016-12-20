@@ -1,0 +1,112 @@
+module sfc-openstack {
+    namespace "urn:cisco:params:xml:ns:yang:sfc-openstack";
+    prefix sfc-openstack;
+
+    import ietf-inet-types {
+            prefix inet;
+            revision-date 2013-07-15;
+        }
+    import ietf-yang-types {
+        prefix yang;
+        revision-date 2013-07-15;
+        }
+
+    organization "openstack Systems, Inc.";
+    description
+        "this is openstack sfc";
+
+    revision 2016-12-18 {
+        description
+            "sfc-openstack revision";
+        reference
+            "sfc-yang";
+        }
+
+    grouping sfp-point {
+        leaf index {
+            type uint32 {
+                range "0..16777216";
+            }
+        }
+        leaf port-name {
+            type string;
+        }
+        leaf bridge-name {
+            type string;
+        }
+        leaf node-ip {
+            type inet:ip-address;
+        }
+    }
+
+    grouping ip-match {
+        leaf src-ip {
+            type inet:ip-address;
+        }
+        leaf dst-ip {
+            type inet:ip-address;
+        }
+        leaf tcp-port {
+            type inet:port-number;
+        }
+    }
+
+    grouping sfc-base {
+        leaf name {
+            type string;
+        }
+        leaf description {
+            type string;
+        }
+        leaf sfc-nsp {
+            type uint32 {
+                range "0..9527";
+            }
+        }
+        container sfp-entries {
+            container source {
+                uses sfp-point;
+            }
+            container sfp-sf-entries{
+                list sfp-sf-entry {
+                    key "index";
+                    uses sfp-point;
+                    leaf sf-mac {
+                        type yang:mac-address;
+                    }
+                }
+            }
+            container destination {
+                uses sfp-point;
+            }
+        }
+        container sfc-match {
+            uses ip-match;
+        }
+    }
+    container sfc-entries {
+        list sfc-entry {
+            key "name";
+            uses sfc-base;
+        }
+    }
+
+    rpc put-sfc {
+        input {
+            uses sfc-base;
+        }
+    }
+
+    rpc delete-sfc {
+        input {
+            leaf name {
+                type string;
+                mandatory true;
+            }
+        }
+    }
+
+}
+
+
+

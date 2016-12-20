@@ -21,11 +21,16 @@ import org.opendaylight.controller.md.sal.binding.api.ReadOnlyTransaction;
 import org.opendaylight.controller.md.sal.binding.api.WriteTransaction;
 import org.opendaylight.controller.md.sal.common.api.data.LogicalDatastoreType;
 import org.opendaylight.controller.sal.common.util.Rpcs;
-import org.opendaylight.yang.gen.v1.urn.cisco.params.xml.ns.yang.sfc.openstack.rev151212.*;
-import org.opendaylight.yang.gen.v1.urn.cisco.params.xml.ns.yang.sfc.openstack.rev151212.sff.base.SfList;
-import org.opendaylight.yang.gen.v1.urn.cisco.params.xml.ns.yang.sfc.openstack.rev151212.sff.list.SffEntry;
-import org.opendaylight.yang.gen.v1.urn.cisco.params.xml.ns.yang.sfc.openstack.rev151212.sff.list.SffEntryBuilder;
-import org.opendaylight.yang.gen.v1.urn.cisco.params.xml.ns.yang.sfc.openstack.rev151212.sff.list.SffEntryKey;
+import org.opendaylight.yang.gen.v1.urn.cisco.params.xml.ns.yang.sfc.openstack.rev161218.*;
+import org.opendaylight.yang.gen.v1.urn.cisco.params.xml.ns.yang.sfc.openstack.rev161218.sfc.base.SfpEntries;
+import org.opendaylight.yang.gen.v1.urn.cisco.params.xml.ns.yang.sfc.openstack.rev161218.sfc.entries.SfcEntry;
+import org.opendaylight.yang.gen.v1.urn.cisco.params.xml.ns.yang.sfc.openstack.rev161218.sfc.entries.SfcEntryBuilder;
+import org.opendaylight.yang.gen.v1.urn.cisco.params.xml.ns.yang.sfc.openstack.rev161218.sfc.entries.SfcEntryKey;
+import org.opendaylight.yang.gen.v1.urn.cisco.params.xml.ns.yang.sfc.openstack.test.rev151212.*;
+import org.opendaylight.yang.gen.v1.urn.cisco.params.xml.ns.yang.sfc.openstack.test.rev151212.sff.base.SfList;
+import org.opendaylight.yang.gen.v1.urn.cisco.params.xml.ns.yang.sfc.openstack.test.rev151212.sff.list.SffEntry;
+import org.opendaylight.yang.gen.v1.urn.cisco.params.xml.ns.yang.sfc.openstack.test.rev151212.sff.list.SffEntryBuilder;
+import org.opendaylight.yang.gen.v1.urn.cisco.params.xml.ns.yang.sfc.openstack.test.rev151212.sff.list.SffEntryKey;
 import org.opendaylight.yangtools.yang.binding.InstanceIdentifier;
 import org.opendaylight.yangtools.yang.common.RpcError;
 import org.opendaylight.yangtools.yang.common.RpcResult;
@@ -33,6 +38,7 @@ import org.opendaylight.yangtools.yang.common.RpcResultBuilder;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
 
+import javax.annotation.Nullable;
 import java.util.Collections;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -42,7 +48,7 @@ import java.util.concurrent.Future;
 
 
 
-public class SfcOpenstackRpc implements SfcOpenstackTestService {
+public class SfcOpenstackRpc implements SfcOpenstackTestService, SfcOpenstackService {
 
     private static final Logger LOG = LoggerFactory.getLogger(SfcOpenstackRpc.class);
     private static DataBroker dataBroker = null;
@@ -64,6 +70,37 @@ public class SfcOpenstackRpc implements SfcOpenstackTestService {
     public Future<RpcResult<Void>> deleteSff(DeleteSffInput input) {
         return null;
     }
+
+    @Override
+    public Future<RpcResult<Void>> deleteSfc(DeleteSfcInput input){ return null; }
+
+
+    @Override
+    public Future<RpcResult<Void>> putSfc(PutSfcInput input) {
+        LOG.info("\n***************openstack sfc put input" + input);
+        if(dataBroker == null) {
+            return Futures.immediateFuture(
+                    RpcResultBuilder.<Void>failed().withError(RpcError.ErrorType.APPLICATION, "no data provider.").build());
+        }
+        SfcEntryBuilder sfcEntryBuilder = new SfcEntryBuilder();
+        SfpEntries sfpEntries = input.getSfpEntries();
+        SfcEntryKey sfcEntryKey = new SfcEntryKey(input.getName());
+        SfcEntry sfc = sfcEntryBuilder.setName(input.getName())
+                .setDescription(input.getDescription())
+                .setKey(sfcEntryKey)
+                .setSfpEntries(sfpEntries)
+                .build();
+        InstanceIdentifier<SfcEntry> sfcIID =
+                InstanceIdentifier.builder(SfcEntries.class).child(SfcEntry.class, sfc.getKey()).build();
+        WriteTransaction writeTx = dataBroker.newWriteOnlyTransaction();
+        writeTx.merge(LogicalDatastoreType.CONFIGURATION, sfcIID,sfc, true);
+        return Futures.transform(writeTx.submit(), new Function<Void, RpcResult<Void>>() {
+            @Override
+            public RpcResult<Void> apply(Void input) { return RpcResultBuilder.<Void>success().build();}
+        });
+    }
+
+
 
     @Override
     public Future<RpcResult<Void>> putSff(PutSffInput input) {

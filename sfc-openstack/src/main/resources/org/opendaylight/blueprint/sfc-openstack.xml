@@ -16,9 +16,14 @@
     </bean>
     <odl:rpc-implementation ref="sfcOpenstackRpc"/>
 
-    <bean id="sfcOpenstackListener"
-          class="org.opendaylight.sfc.sfc_openstack.listener.SfcOpenstackListener"
+    <bean id="sfcOpenstackTestListener"
+          class="org.opendaylight.sfc.sfc_openstack.listener.SfcOpenstackTestListener"
           init-method="init" destroy-method="close">
+        <argument ref="dataBroker" />
+    </bean>
+    <bean id="sfcOpenstackListener"
+            class="org.opendaylight.sfc.sfc_openstack.listener.SfcOpenstackListener"
+            init-method="init" destroy-method="close">
         <argument ref="dataBroker" />
     </bean>
 

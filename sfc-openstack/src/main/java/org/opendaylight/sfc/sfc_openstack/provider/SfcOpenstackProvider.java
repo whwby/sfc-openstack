@@ -12,7 +12,7 @@ import org.opendaylight.controller.md.sal.binding.api.DataBroker;
 import org.opendaylight.controller.sal.binding.api.BindingAwareBroker;
 import org.opendaylight.controller.sal.binding.api.RpcProviderRegistry;
 
-import org.opendaylight.yang.gen.v1.urn.cisco.params.xml.ns.yang.sfc.openstack.rev151212.SfcOpenstackTestService;
+import org.opendaylight.yang.gen.v1.urn.cisco.params.xml.ns.yang.sfc.openstack.test.rev151212.SfcOpenstackTestService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -1,7 +1,7 @@
 module sfc-openstack-test {
-    namespace "urn:cisco:params:xml:ns:yang:sfc-openstack";
+    namespace "urn:cisco:params:xml:ns:yang:sfc-openstack-test";
 
-    prefix sfc-openstack;
+    prefix sfc-openstack-test;
 
     import ietf-inet-types {
         prefix inet;
