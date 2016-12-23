@@ -38,13 +38,11 @@ import org.opendaylight.yangtools.yang.common.RpcResultBuilder;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
 
-import javax.annotation.Nullable;
 import java.util.Collections;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 
-//import static org.opendaylight.sfc.provider.SfcProviderDebug.printTraceStart;
 
 
 

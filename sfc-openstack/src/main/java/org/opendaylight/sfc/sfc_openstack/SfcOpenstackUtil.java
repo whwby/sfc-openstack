@@ -7,14 +7,13 @@
  */
 package org.opendaylight.sfc.sfc_openstack;
 
-import com.google.common.base.Preconditions;
 import org.opendaylight.controller.md.sal.common.api.data.LogicalDatastoreType;
 import org.opendaylight.sfc.provider.api.SfcDataStoreAPI;
 import org.opendaylight.sfc.util.openflow.SfcOpenflowUtils;
 import org.opendaylight.ovsdb.southbound.SouthboundConstants;
-import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.inet.types.rev130715.IpAddress;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.action.types.rev131112.action.list.Action;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.flow.inventory.rev130819.FlowId;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.flow.inventory.rev130819.tables.TableKey;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.flow.inventory.rev130819.tables.table.FlowBuilder;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.flow.inventory.rev130819.tables.table.FlowKey;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.flow.types.rev131026.OutputPortValues;
@@ -37,6 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
+
 /**
  * Created by One_Homeway on 2016/12/13.
  */
@@ -45,8 +45,12 @@ public class SfcOpenstackUtil {
     private static final Logger LOG = LoggerFactory.getLogger(SfcOpenstackUtil.class);
     private static final short testTableId  = 1;
     private static final int FLOW_PRIORITY_CLASSIFIER = 1000;
+    private static final short TABLE_INDEX_0 = 0;
     private static final short NSH_MDTYPE_ONE = 0x1;
     private static final short NSH_NP_ETH = 0x3;
+    public static final short IP_PROTOCOL_ICMP = (short) 1;
+    public static final short IP_PROTOCOL_TCP = (short) 6;
+    public static final short IP_PROTOCOL_UDP = (short) 17;
 
     private static final String OVSDB_BRIDGE_PREFIX = "/bridge/";
 
@@ -55,7 +59,6 @@ public class SfcOpenstackUtil {
     public static boolean createTestFlow(String nodeName,Long outPort) {
         int order = 0;
         Match match = createMatch("11.11.11.0/24", "11.11.11.0/24");
-        //Action popVlan = SfcOpenflowUtils.createActionPopVlan(order++);
         Action stripVlan = SfcOpenflowUtils.createActionStripVlan(order++);
         Action out = SfcOpenflowUtils.createActionOutPort(outPort.intValue(),order++);
         FlowBuilder flowb = new FlowBuilder();
@@ -71,17 +74,14 @@ public class SfcOpenstackUtil {
         return SfcOpenflowUtils.writeFlowToDataStore(nodeName, flowb);
     }
 
-    public static boolean createFirstFlowInSameNode(String bridgeId, short tableId, Match match,
-                                               SfcNshHeader sfcNshHeader,Long outPort) {
+    public static boolean createClassifierIntFlow(String bridgeId, short tableId, String flowKey, Match match,
+                                                  SfcNshHeader sfcNshHeader, Long outPort, Boolean sameNode) {
         int order = 0;
-        String flowKey="FirstFlowInSameNode";
         //flow action site:br-int
         if((bridgeId == null) || (match == null) ||(sfcNshHeader == null)) {
             return false;
         }
-        String srcMac = sfcNshHeader.getEncapSrc();
-        String dstMac = sfcNshHeader.getEncapDst();
-        Action popVlan = SfcOpenflowUtils.createActionPopVlan(order++);
+        //Action popVlan = SfcOpenflowUtils.createActionPopVlan(order++);
         Action pushNsh = SfcOpenflowUtils.createActionNxPushNsh(order++);
         Action loadNshMdtype = SfcOpenflowUtils.createActionNxLoadNshMdtype(NSH_MDTYPE_ONE, order++);
         Action loadNshNp = SfcOpenflowUtils.createActionNxLoadNshNp(NSH_NP_ETH, order++);
@@ -93,104 +93,48 @@ public class SfcOpenstackUtil {
         Action setC2 = SfcOpenflowUtils.createActionNxSetNshc2(sfcNshHeader.getNshMetaC2(), order++);
         Action setC3 = SfcOpenflowUtils.createActionNxSetNshc3(sfcNshHeader.getNshMetaC3(), order++);
         Action setC4 = SfcOpenflowUtils.createActionNxSetNshc4(sfcNshHeader.getNshMetaC4(), order++);
-
-        Action setEncapSrc = SfcOpenflowUtils.createActionNxLoadEncapEthSrc(srcMac, order++);
-        Action setEncapDst = SfcOpenflowUtils.createActionNxLoadEncapEthDst(dstMac,order++);
-
-        Action out = null;
-        if (outPort == null) {
-            out = SfcOpenflowUtils.createActionOutPort(OutputPortValues.INPORT.toString(), order++);
-        } else {
-            out = SfcOpenflowUtils.createActionOutPort(outPort.intValue(), order++);
-        }
-
         FlowBuilder flowb = new FlowBuilder();
-        flowb.setId(new FlowId(flowKey))
-                .setTableId(tableId)
-                .setKey(new FlowKey(new FlowId(flowKey)))
-                .setPriority(Integer.valueOf(FLOW_PRIORITY_CLASSIFIER))
-                .setMatch(match)
-                .setInstructions(SfcOpenflowUtils.createInstructionsBuilder(SfcOpenflowUtils
-                        .createActionsInstructionBuilder(popVlan, pushNsh, loadNshMdtype, loadNshNp,
-                                setNsp, setNsi, setC1, setC2, setC3, setC4, setEncapSrc,setEncapDst,out))
-                        .build());
-        LOG.info("IN openstack util createFirstFlowInSameNode is: {}" + flowb );
+        if (sameNode) {
+            String srcMac = sfcNshHeader.getEncapSrc();
+            String dstMac = sfcNshHeader.getEncapDst();
+            Action setEncapSrc = SfcOpenflowUtils.createActionNxLoadEncapEthSrc(srcMac, order++);
+            Action setEncapDst = SfcOpenflowUtils.createActionNxLoadEncapEthDst(dstMac, order++);
+            Action out = SfcOpenflowUtils.createActionOutPort(outPort.intValue(), order++);
+
+            flowb.setId(new FlowId(flowKey))
+                    .setTableId(tableId)
+                    .setKey(new FlowKey(new FlowId(flowKey)))
+                    .setPriority(Integer.valueOf(FLOW_PRIORITY_CLASSIFIER))
+                    .setMatch(match)
+                    .setInstructions(SfcOpenflowUtils.createInstructionsBuilder(SfcOpenflowUtils
+                            .createActionsInstructionBuilder( pushNsh, loadNshMdtype, loadNshNp,
+                                    setNsp, setNsi, setC1, setC2, setC3, setC4, setEncapSrc, setEncapDst, out))
+                            .build());
+        }
+        else {
+            Action out = SfcOpenflowUtils.createActionOutPort(outPort.intValue(), order++);
+            flowb.setId(new FlowId(flowKey))
+                    .setTableId(tableId)
+                    .setKey(new FlowKey(new FlowId(flowKey)))
+                    .setPriority(Integer.valueOf(FLOW_PRIORITY_CLASSIFIER))
+                    .setMatch(match)
+                    .setInstructions(SfcOpenflowUtils.createInstructionsBuilder(SfcOpenflowUtils
+                            .createActionsInstructionBuilder( pushNsh, loadNshMdtype, loadNshNp,
+                                    setNsp, setNsi, setC1, setC2, setC3, setC4,out))
+                            .build());
+        }
+        LOG.info("IN openstack util createClassifierIntFlow is: {}>>>{}",bridgeId,outPort);
         return SfcOpenflowUtils.writeFlowToDataStore(bridgeId, flowb);
     }
 
-    public static boolean createFlowFromVNF(String bridgeId,short tableId, Match match, Long outport) {
-
-        //let suppose only a sf, so the outport is dst
+    public static boolean createToVNFIntFlow(String bridgeId, short tableId, String flowKey, Match match,
+                                          SfcNshHeader sfcNshHeader, Long outPort) {
         int order = 0;
-        String flowKey="createFlowFromVNF";
-        Action popNsh = SfcOpenflowUtils.createActionNxPopNsh(order++);
-        Action out = SfcOpenflowUtils.createActionOutPort(outport.intValue(),order++);
-
-        FlowBuilder flowb = new FlowBuilder();
-        flowb.setId(new FlowId(flowKey))
-                .setTableId(tableId)
-                .setKey(new FlowKey(new FlowId(flowKey)))
-                .setPriority(Integer.valueOf(FLOW_PRIORITY_CLASSIFIER))
-                .setMatch(match)
-                .setInstructions(SfcOpenflowUtils.createInstructionsBuilder(SfcOpenflowUtils
-                        .createActionsInstructionBuilder(popNsh,out))
-                        .build());
-        LOG.info("IN openstack util createFlowFromVNF is: {}" + flowb );
-        return SfcOpenflowUtils.writeFlowToDataStore(bridgeId, flowb);
-
-    }
-
-    public static boolean createFirstFlowInDifferentNode(String bridgeId, short tableId, Match match,
-                                                    SfcNshHeader sfcNshHeader,Long outPort) {
-        int order = 0;
-        String flowKey="FirstFlowInDifferentNode";
-        if((bridgeId == null) || (match == null) ||(sfcNshHeader == null)) {
-            return false;
-        }
-        Action popVlan = SfcOpenflowUtils.createActionPopVlan(order++);
-        Action pushNsh = SfcOpenflowUtils.createActionNxPushNsh(order++);
-        Action loadNshMdtype = SfcOpenflowUtils.createActionNxLoadNshMdtype(NSH_MDTYPE_ONE, order++);
-        Action loadNshNp = SfcOpenflowUtils.createActionNxLoadNshNp(NSH_NP_ETH, order++);
-
-        Action setNsp = SfcOpenflowUtils.createActionNxSetNsp(sfcNshHeader.getNshNsp(), order++);
-        Action setNsi = SfcOpenflowUtils.createActionNxSetNsi(sfcNshHeader.getNshStartNsi(), order++);
-
-        Action setC1 = SfcOpenflowUtils.createActionNxSetNshc1(sfcNshHeader.getNshMetaC1(), order++);
-        Action setC2 = SfcOpenflowUtils.createActionNxSetNshc2(sfcNshHeader.getNshMetaC2(), order++);
-        Action setC3 = SfcOpenflowUtils.createActionNxSetNshc3(sfcNshHeader.getNshMetaC3(), order++);
-        Action setC4 = SfcOpenflowUtils.createActionNxSetNshc4(sfcNshHeader.getNshMetaC4(), order++);
-
-        Action out = null;
-        if (outPort == null) {
-            out = SfcOpenflowUtils.createActionOutPort(OutputPortValues.INPORT.toString(), order++);
-        } else {
-            out = SfcOpenflowUtils.createActionOutPort(outPort.intValue(), order++);
-        }
-
-        FlowBuilder flowb = new FlowBuilder();
-        flowb.setId(new FlowId(flowKey))
-                .setTableId(tableId)
-                .setKey(new FlowKey(new FlowId(flowKey)))
-                .setPriority(Integer.valueOf(FLOW_PRIORITY_CLASSIFIER))
-                .setMatch(match)
-                .setInstructions(SfcOpenflowUtils.createInstructionsBuilder(SfcOpenflowUtils
-                        .createActionsInstructionBuilder(popVlan, pushNsh, loadNshMdtype, loadNshNp,
-                                setNsp, setNsi, setC1, setC2, setC3, setC4,out))
-                        .build());
-        LOG.info("IN openstack util createFirstFlowInDifferentNode is: {}" + flowb );
-        return SfcOpenflowUtils.writeFlowToDataStore(bridgeId, flowb);
-    }
-
-    public static boolean createFlowToVNF(String bridgeId,short tableId, Match match,
-                                          SfcNshHeader sfcNshHeader, Long outport) {
-
-        int order = 0;
-        String flowKey="createFlowToVNF";
         String srcMac = sfcNshHeader.getEncapSrc();
         String dstMac = sfcNshHeader.getEncapDst();
-        Action out = SfcOpenflowUtils.createActionOutPort(outport.intValue(),order++);
         Action setEncapSrc = SfcOpenflowUtils.createActionNxLoadEncapEthSrc(srcMac, order++);
         Action setEncapDst = SfcOpenflowUtils.createActionNxLoadEncapEthDst(dstMac,order++);
+        Action out = SfcOpenflowUtils.createActionOutPort(outPort.intValue(),order++);
 
         FlowBuilder flowb = new FlowBuilder();
         flowb.setId(new FlowId(flowKey))
@@ -201,16 +145,36 @@ public class SfcOpenstackUtil {
                 .setInstructions(SfcOpenflowUtils.createInstructionsBuilder(SfcOpenflowUtils
                         .createActionsInstructionBuilder(setEncapSrc,setEncapDst,out))
                         .build());
-        LOG.info("IN openstack util createFlowToVNF is: {}" + flowb );
+        LOG.info("IN openstack util createToVNFIntFlow is: {}>>>{}",bridgeId,outPort);
         return SfcOpenflowUtils.writeFlowToDataStore(bridgeId, flowb);
 
     }
 
-    public static boolean createFlowToNormal(String bridgeId,short tableId, Match match, Long outport) {
-
+    public static boolean createToDestinationIntFlow(String bridgeId,short tableId, String flowKey,
+                                             Match match, Long outPort) {
+        //let suppose only a sf, so the outport is dst
         int order = 0;
-        String flowKey="createFlowToNormal";
-        Action out = SfcOpenflowUtils.createActionOutPort(outport.intValue(),order++);
+        Action popNsh = SfcOpenflowUtils.createActionNxPopNsh(order++);
+        Action out = SfcOpenflowUtils.createActionOutPort(outPort.intValue(),order++);
+
+        FlowBuilder flowb = new FlowBuilder();
+        flowb.setId(new FlowId(flowKey))
+                .setTableId(tableId)
+                .setKey(new FlowKey(new FlowId(flowKey)))
+                .setPriority(Integer.valueOf(FLOW_PRIORITY_CLASSIFIER))
+                .setMatch(match)
+                .setInstructions(SfcOpenflowUtils.createInstructionsBuilder(SfcOpenflowUtils
+                        .createActionsInstructionBuilder(popNsh,out))
+                        .build());
+        LOG.info("IN openstack util createToDestinationIntFlow is: {}>>>{}",bridgeId,outPort);
+        return SfcOpenflowUtils.writeFlowToDataStore(bridgeId, flowb);
+
+    }
+
+    public static boolean createOutputIntFlow(String bridgeId,short tableId, String flowKey,
+                                              Match match, Long outPort) {
+        int order = 0;
+        Action out = SfcOpenflowUtils.createActionOutPort(outPort.intValue(),order++);
 
         FlowBuilder flowb = new FlowBuilder();
         flowb.setId(new FlowId(flowKey))
@@ -221,14 +185,12 @@ public class SfcOpenstackUtil {
                 .setInstructions(SfcOpenflowUtils.createInstructionsBuilder(SfcOpenflowUtils
                         .createActionsInstructionBuilder(out))
                         .build());
-        LOG.info("IN openstack util createFlowToNormal is: {}" + flowb );
+        LOG.info("IN openstack util createOutputIntFlow is: {}");
         return SfcOpenflowUtils.writeFlowToDataStore(bridgeId, flowb);
-
     }
 
-    public static boolean createOtherIntFlows(String bridgeId, short tableId) {
+    public static boolean createNormalIntFlow(String bridgeId, short tableId, String flowKey) {
         int order = 0;
-        String flowKey = "createOtherIntFlows";
         Action normalAction = SfcOpenflowUtils.createActionNormal(order++);
         FlowBuilder flowb = new FlowBuilder();
         flowb.setId(new FlowId(flowKey))
@@ -238,13 +200,12 @@ public class SfcOpenstackUtil {
                 .setInstructions(SfcOpenflowUtils.createInstructionsBuilder(SfcOpenflowUtils
                         .createActionsInstructionBuilder(normalAction))
                         .build());
-        LOG.info("IN openstack util createOtherIntFlows is: {}" + flowb );
+        LOG.info("IN openstack util createNormalIntFlow is: {}");
         return SfcOpenflowUtils.writeFlowToDataStore(bridgeId, flowb);
     }
 
-    public static boolean createOtherSfcFlows(String bridgeId, short tableId) {
+    public static boolean createDropSfcFlow(String bridgeId, short tableId,String flowKey) {
         int order = 0;
-        String flowKey = "createOtherSfcFlows";
         Action dropAction = SfcOpenflowUtils.createActionDropPacket(order++);
         FlowBuilder flowb = new FlowBuilder();
         flowb.setId(new FlowId(flowKey))
@@ -254,13 +215,13 @@ public class SfcOpenstackUtil {
                 .setInstructions(SfcOpenflowUtils.createInstructionsBuilder(SfcOpenflowUtils
                         .createActionsInstructionBuilder(dropAction))
                         .build());
-        LOG.info("IN openstack util createOtherSfcFlows is: {}" + flowb );
+        LOG.info("IN openstack util createDropSfcFlow is: {}" );
         return SfcOpenflowUtils.writeFlowToDataStore(bridgeId, flowb);
     }
 
-    public static boolean createSfcFlows(String bridgeId, short tableId, Match match, Long outport) {
+    public static boolean createOutputSfcFlow(String bridgeId, short tableId, String flowKey,
+                                              Match match, Long outport) {
         int order = 0;
-        String flowKey = "createSfcFlows";
         Action out = SfcOpenflowUtils.createActionOutPort(outport.intValue(), order++);
         FlowBuilder flowb = new FlowBuilder();
         flowb.setId(new FlowId(flowKey))
@@ -271,7 +232,7 @@ public class SfcOpenstackUtil {
                 .setInstructions(SfcOpenflowUtils.createInstructionsBuilder(SfcOpenflowUtils
                         .createActionsInstructionBuilder(out))
                         .build());
-        LOG.info("IN openstack util createSfcFlows is: {}" + flowb );
+        LOG.info("IN openstack util createOutputSfcFlow is: {}" ,bridgeId);
         return SfcOpenflowUtils.writeFlowToDataStore(bridgeId, flowb);
     }
 
@@ -292,7 +253,7 @@ public class SfcOpenstackUtil {
 
         String srcMac = sfcNshHeader.getEncapSrc();
         String dstMac = sfcNshHeader.getEncapDst();
-        Action popVlan = SfcOpenflowUtils.createActionPopVlan(order++);
+        //Action popVlan = SfcOpenflowUtils.createActionPopVlan(order++);
         Action pushNsh = SfcOpenflowUtils.createActionNxPushNsh(order++);
         Action loadNshMdtype = SfcOpenflowUtils.createActionNxLoadNshMdtype(NSH_MDTYPE_ONE, order++);
         Action loadNshNp = SfcOpenflowUtils.createActionNxLoadNshNp(NSH_NP_ETH, order++);
@@ -322,12 +283,21 @@ public class SfcOpenstackUtil {
                 .setPriority(Integer.valueOf(FLOW_PRIORITY_CLASSIFIER))
                 .setMatch(match)
                 .setInstructions(SfcOpenflowUtils.createInstructionsBuilder(SfcOpenflowUtils
-                        .createActionsInstructionBuilder(popVlan, pushNsh, loadNshMdtype, loadNshNp,
+                        .createActionsInstructionBuilder(pushNsh, loadNshMdtype, loadNshNp,
                                 setNsp, setNsi, setC1, setC2, setC3, setC4, setEncapSrc,setEncapDst,out))
                         .build());
-        LOG.info("IN openstack util flow is: {}" + flowb );
+        LOG.info("IN openstack util flow is: {}" );
         return SfcOpenflowUtils.writeFlowToDataStore(nodeName, flowb);
     }
+
+    public static Boolean deleteFlow(String bridgeId, String flowKey) {
+        if((bridgeId == null) || (flowKey == null)) {
+            return false;
+        }
+        return SfcOpenflowUtils.removeFlowFromDataStore(bridgeId,new TableKey(TABLE_INDEX_0),
+                new FlowKey(new FlowId(flowKey.toString())));
+    }
+
 
     private static NodeId getManagedByNodeId(OvsdbBridgeAugmentation ovsdbBirdge) {
         String bridgeName = ovsdbBirdge.getBridgeName().getValue();
@@ -360,7 +330,7 @@ public class SfcOpenstackUtil {
         String bridgeId = null;
         if (bridgeNodeId != null){
             for (Node node:topology.getNode()) {
-                if (node.getNodeId() == bridgeNodeId) {
+                if (node.getNodeId().equals(bridgeNodeId)) {
                     OvsdbBridgeAugmentation ovsdbNodeAug = node.getAugmentation(OvsdbBridgeAugmentation.class);
                     String datapathId = ovsdbNodeAug.getDatapathId().getValue();
                     bridgeId = "openflow:" + String.valueOf(getLongFromDpid(datapathId));
@@ -378,8 +348,8 @@ public class SfcOpenstackUtil {
             for (Node node : topology.getNode()) {
                 OvsdbNodeAugmentation ovsdbNodeAug = node.getAugmentation(OvsdbNodeAugmentation.class);
                 if (ovsdbNodeAug != null && ovsdbNodeAug.getConnectionInfo() != null) {
-                    String remoteIp = ovsdbNodeAug.getConnectionInfo().getRemoteIp().toString();
-                    if (remoteIp == nodeIp) {
+                    String remoteIp = ovsdbNodeAug.getConnectionInfo().getRemoteIp().getIpv4Address().getValue();
+                    if (remoteIp.equals(nodeIp)) {
                         nodeId = node.getNodeId().getValue();
                         break;
                     } else {
@@ -396,8 +366,9 @@ public class SfcOpenstackUtil {
     }
 
 
-    public static Match createMatch(String srcIp, String dstIp, int vlanId, int port) {
+    public static Match createMatch(String srcIp, String dstIp, String protocol, int vlanId, int port) {
         MatchBuilder matchBuilder = new MatchBuilder();
+
         SfcOpenflowUtils.addMatchEtherType(matchBuilder, SfcOpenflowUtils.ETHERTYPE_IPV4);
         if (srcIp != null) {
             String s[] = srcIp.split("/");
@@ -407,8 +378,22 @@ public class SfcOpenstackUtil {
             String d[] = dstIp.split("/");
             SfcOpenflowUtils.addMatchDstIpv4(matchBuilder,d[0],Integer.valueOf(d[1]).intValue());
         }
-        if(port != -1) {
-            SfcOpenflowUtils.addMatchDstTcpPort(matchBuilder, port);
+        if (protocol != null) {
+            if (protocol.toUpperCase().contains("ICMP")) {
+                SfcOpenflowUtils.addMatchIpProtocol(matchBuilder, IP_PROTOCOL_ICMP);
+            } else if (protocol.toUpperCase().contains("IP")) {
+
+            } else if (protocol.toUpperCase().contains("TCP")) {
+                SfcOpenflowUtils.addMatchIpProtocol(matchBuilder, IP_PROTOCOL_TCP);
+                if (port != -1) {
+                    SfcOpenflowUtils.addMatchDstTcpPort(matchBuilder, port);
+                }
+            } else if (protocol.toUpperCase().contains("UDP")) {
+                SfcOpenflowUtils.addMatchIpProtocol(matchBuilder, IP_PROTOCOL_UDP);
+                if (port != -1) {
+                    SfcOpenflowUtils.addMatchDstUdpPort(matchBuilder, port);
+                }
+            }
         }
         if(vlanId != -1){
             SfcOpenflowUtils.addMatchVlan(matchBuilder,vlanId);
@@ -416,12 +401,14 @@ public class SfcOpenstackUtil {
         return matchBuilder.build();
     }
 
-    public static Match createMatch(String srcIp, String dstIp) {
-        return createMatch(srcIp,dstIp,1,-1);
+    public static Match createMatch(String srcIp, String dstIp, String protocol) {
+        return createMatch(srcIp,dstIp,protocol,-1,-1);
     }
-
-    public static Match createMatch(IpAddress srcIp, IpAddress dstIp) {
-        return createMatch(srcIp.toString(),dstIp.toString());
+    public static Match createMatch(String srcIp, String dstIp, String protocol,int port) {
+        return createMatch(srcIp,dstIp,protocol,-1,port);
+    }
+    public static Match createMatch(String srcIp, String dstIp) {
+        return createMatch(srcIp,dstIp,null,0,-1);
     }
 
     public static Match createNshMatch(Long nsp, short nsi, String ConnId) {
@@ -441,9 +428,9 @@ public class SfcOpenstackUtil {
         NodeId bridgeNodeId = getBridgeNodeId(bridgeName,nodeIp);
         if (bridgeNodeId != null){
             for (Node node:topology.getNode()) {
-                if (node.getNodeId() == bridgeNodeId) {
+                if (node.getNodeId().equals(bridgeNodeId)) {
                     for(TerminationPoint tPoint : node.getTerminationPoint()) {
-                        if(tPoint.getTpId().getValue() == portName) {
+                        if(tPoint.getTpId().getValue().equals(portName)) {
                             OvsdbTerminationPointAugmentation tPointAug =
                                     tPoint.getAugmentation(OvsdbTerminationPointAugmentation.class);
                             return tPointAug.getOfport();
@@ -456,6 +443,29 @@ public class SfcOpenstackUtil {
             }
         }
         return null;
+    }
+
+    public static int getSfcVlanId (String bridgeName, String nodeIp, String portName) {
+        Topology topology = SfcDataStoreAPI.readTransactionAPI(buildOvsdbTopologyIID(),
+                LogicalDatastoreType.OPERATIONAL);
+        NodeId bridgeNodeId = getBridgeNodeId(bridgeName,nodeIp);
+        if (bridgeNodeId != null){
+            for (Node node:topology.getNode()) {
+                if (node.getNodeId().equals(bridgeNodeId)) {
+                    for(TerminationPoint tPoint : node.getTerminationPoint()) {
+                        if(tPoint.getTpId().getValue().equals(portName)) {
+                            OvsdbTerminationPointAugmentation tPointAug =
+                                    tPoint.getAugmentation(OvsdbTerminationPointAugmentation.class);
+                            return tPointAug.getVlanTag().getValue();
+                        }
+                        else{
+                            continue;
+                        }
+                    }
+                }
+            }
+        }
+        return 0;
     }
 
     public static SfcNshHeader createSfcNshHeader(Long nsp, short nsi, String dstEncapMac) {

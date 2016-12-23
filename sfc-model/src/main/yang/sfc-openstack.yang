@@ -31,22 +31,23 @@ module sfc-openstack {
         leaf port-name {
             type string;
         }
-        leaf bridge-name {
-            type string;
-        }
         leaf node-ip {
-            type inet:ip-address;
+            type string;
+            mandatory true;
         }
     }
 
     grouping ip-match {
         leaf src-ip {
-            type inet:ip-address;
+            type string;
         }
         leaf dst-ip {
-            type inet:ip-address;
+            type string;
         }
-        leaf tcp-port {
+        leaf protocol-name {
+            type string;
+        }
+        leaf port {
             type inet:port-number;
         }
     }
@@ -57,6 +58,14 @@ module sfc-openstack {
         }
         leaf description {
             type string;
+        }
+        container sfc-bridge {
+            leaf converge-bridge-name {
+                type string;
+            }
+            leaf tunnel-bridge-name {
+                type string;
+            }
         }
         leaf sfc-nsp {
             type uint32 {
@@ -73,6 +82,7 @@ module sfc-openstack {
                     uses sfp-point;
                     leaf sf-mac {
                         type yang:mac-address;
+                        mandatory true;
                     }
                 }
             }
