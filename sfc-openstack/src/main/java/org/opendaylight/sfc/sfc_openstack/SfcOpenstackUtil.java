@@ -95,9 +95,9 @@ public class SfcOpenstackUtil {
         Action setC4 = SfcOpenflowUtils.createActionNxSetNshc4(sfcNshHeader.getNshMetaC4(), order++);
         FlowBuilder flowb = new FlowBuilder();
         if (sameNode) {
-            String srcMac = sfcNshHeader.getEncapSrc();
+            //String srcMac = sfcNshHeader.getEncapSrc();
             String dstMac = sfcNshHeader.getEncapDst();
-            Action setEncapSrc = SfcOpenflowUtils.createActionNxLoadEncapEthSrc(srcMac, order++);
+            //Action setEncapSrc = SfcOpenflowUtils.createActionNxLoadEncapEthSrc(srcMac, order++);
             Action setEncapDst = SfcOpenflowUtils.createActionNxLoadEncapEthDst(dstMac, order++);
             Action out = SfcOpenflowUtils.createActionOutPort(outPort.intValue(), order++);
 
@@ -108,7 +108,7 @@ public class SfcOpenstackUtil {
                     .setMatch(match)
                     .setInstructions(SfcOpenflowUtils.createInstructionsBuilder(SfcOpenflowUtils
                             .createActionsInstructionBuilder( pushNsh, loadNshMdtype, loadNshNp,
-                                    setNsp, setNsi, setC1, setC2, setC3, setC4, setEncapSrc, setEncapDst, out))
+                                    setNsp, setNsi, setC1, setC2, setC3, setC4, setEncapDst, out))
                             .build());
         }
         else {
@@ -123,7 +123,7 @@ public class SfcOpenstackUtil {
                                     setNsp, setNsi, setC1, setC2, setC3, setC4,out))
                             .build());
         }
-        LOG.info("IN openstack util createClassifierIntFlow is: {}>>>{}",bridgeId,outPort);
+        LOG.info("IN openstack util createClassifierIntFlow key is: {}",flowKey);
         return SfcOpenflowUtils.writeFlowToDataStore(bridgeId, flowb);
     }
 
@@ -132,7 +132,7 @@ public class SfcOpenstackUtil {
         int order = 0;
         String srcMac = sfcNshHeader.getEncapSrc();
         String dstMac = sfcNshHeader.getEncapDst();
-        Action setEncapSrc = SfcOpenflowUtils.createActionNxLoadEncapEthSrc(srcMac, order++);
+        //Action setEncapSrc = SfcOpenflowUtils.createActionNxLoadEncapEthSrc(srcMac, order++);
         Action setEncapDst = SfcOpenflowUtils.createActionNxLoadEncapEthDst(dstMac,order++);
         Action out = SfcOpenflowUtils.createActionOutPort(outPort.intValue(),order++);
 
@@ -143,9 +143,9 @@ public class SfcOpenstackUtil {
                 .setPriority(Integer.valueOf(FLOW_PRIORITY_CLASSIFIER))
                 .setMatch(match)
                 .setInstructions(SfcOpenflowUtils.createInstructionsBuilder(SfcOpenflowUtils
-                        .createActionsInstructionBuilder(setEncapSrc,setEncapDst,out))
+                        .createActionsInstructionBuilder(setEncapDst,out))
                         .build());
-        LOG.info("IN openstack util createToVNFIntFlow is: {}>>>{}",bridgeId,outPort);
+        LOG.info("IN openstack util createToVNFIntFlow key is: {}",flowKey);
         return SfcOpenflowUtils.writeFlowToDataStore(bridgeId, flowb);
 
     }
@@ -161,12 +161,12 @@ public class SfcOpenstackUtil {
         flowb.setId(new FlowId(flowKey))
                 .setTableId(tableId)
                 .setKey(new FlowKey(new FlowId(flowKey)))
-                .setPriority(Integer.valueOf(FLOW_PRIORITY_CLASSIFIER))
+                .setPriority(Integer.valueOf(FLOW_PRIORITY_CLASSIFIER)+10)
                 .setMatch(match)
                 .setInstructions(SfcOpenflowUtils.createInstructionsBuilder(SfcOpenflowUtils
                         .createActionsInstructionBuilder(popNsh,out))
                         .build());
-        LOG.info("IN openstack util createToDestinationIntFlow is: {}>>>{}",bridgeId,outPort);
+        LOG.info("IN openstack util createToDestinationIntFlow key is: {}",flowKey);
         return SfcOpenflowUtils.writeFlowToDataStore(bridgeId, flowb);
 
     }
@@ -180,12 +180,12 @@ public class SfcOpenstackUtil {
         flowb.setId(new FlowId(flowKey))
                 .setTableId(tableId)
                 .setKey(new FlowKey(new FlowId(flowKey)))
-                .setPriority(Integer.valueOf(FLOW_PRIORITY_CLASSIFIER))
+                .setPriority(Integer.valueOf(FLOW_PRIORITY_CLASSIFIER+10))
                 .setMatch(match)
                 .setInstructions(SfcOpenflowUtils.createInstructionsBuilder(SfcOpenflowUtils
                         .createActionsInstructionBuilder(out))
                         .build());
-        LOG.info("IN openstack util createOutputIntFlow is: {}");
+        LOG.info("IN openstack util createOutputIntFlow key is: {}",flowKey);
         return SfcOpenflowUtils.writeFlowToDataStore(bridgeId, flowb);
     }
 
@@ -200,7 +200,7 @@ public class SfcOpenstackUtil {
                 .setInstructions(SfcOpenflowUtils.createInstructionsBuilder(SfcOpenflowUtils
                         .createActionsInstructionBuilder(normalAction))
                         .build());
-        LOG.info("IN openstack util createNormalIntFlow is: {}");
+        LOG.info("IN openstack util createNormalIntFlow key is: {}",flowKey);
         return SfcOpenflowUtils.writeFlowToDataStore(bridgeId, flowb);
     }
 
@@ -215,7 +215,7 @@ public class SfcOpenstackUtil {
                 .setInstructions(SfcOpenflowUtils.createInstructionsBuilder(SfcOpenflowUtils
                         .createActionsInstructionBuilder(dropAction))
                         .build());
-        LOG.info("IN openstack util createDropSfcFlow is: {}" );
+        LOG.info("IN openstack util createDropSfcFlow key is: {}",flowKey);
         return SfcOpenflowUtils.writeFlowToDataStore(bridgeId, flowb);
     }
 
@@ -232,7 +232,7 @@ public class SfcOpenstackUtil {
                 .setInstructions(SfcOpenflowUtils.createInstructionsBuilder(SfcOpenflowUtils
                         .createActionsInstructionBuilder(out))
                         .build());
-        LOG.info("IN openstack util createOutputSfcFlow is: {}" ,bridgeId);
+        LOG.info("IN openstack util createOutputSfcFlow key is: {}",flowKey);
         return SfcOpenflowUtils.writeFlowToDataStore(bridgeId, flowb);
     }
 
@@ -294,6 +294,7 @@ public class SfcOpenstackUtil {
         if((bridgeId == null) || (flowKey == null)) {
             return false;
         }
+        LOG.info("IN openstack util deleteFlow is: {}>>{}",bridgeId,flowKey );
         return SfcOpenflowUtils.removeFlowFromDataStore(bridgeId,new TableKey(TABLE_INDEX_0),
                 new FlowKey(new FlowId(flowKey.toString())));
     }
