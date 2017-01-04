@@ -50,7 +50,6 @@
             <phase>generate-resources</phase>
             <configuration>
               <outputDirectory>${project.build.directory}/generated-resources</outputDirectory>
-              <groupId>org.opendaylight.dlux</groupId>
               <includeArtifactIds>sfc-ui-module</includeArtifactIds>
               <excludes>META-INF\/**</excludes>
               <excludeTransitive>true</excludeTransitive>

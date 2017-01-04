@@ -1,0 +1,50 @@
+{
+  "sfc-entries": {
+    "sfc-entry": [
+      {
+        "name": "test2",
+        "description": "dsadad",
+        "sfc-bridge": {
+          "converge-bridge-name": "br-int",
+          "tunnel-bridge-name": "br-sfc"
+        },
+        "sfc-nsp": "12",
+        "sfp-entries": {
+          "source": {
+            "index": "0",
+            "port-name": "qvoa5f8f64a-e8",
+            "node-ip": "172.17.17.182"
+          },
+          "sfp-sf-entries": {
+            "sfp-sf-entry": [
+              {
+                "sf-mac": "fa:16:3e:1e:c2:73",
+                "index": "2",
+                "port-name": "qvo227d9a4e-0f",
+                "node-ip": "172.17.17.181"
+              },
+              {
+                "sf-mac": "fa:16:3e:af:3c:6a",
+                "index": "3",
+                "port-name": "qvo1a0bb9ab-ee",
+                "node-ip": "172.17.17.181"
+              }
+
+            ]
+          },
+          "destination": {
+            "index": "2",
+            "port-name": "qvoe22c1b89-12",
+            "node-ip": "172.17.17.182"
+          }
+        },
+        "sfc-match": {
+          "src-ip": "10.0.0.6/32",
+          "dst-ip": "10.0.0.5/32",
+          "protocol-name": "icmp",
+          "port": "22"
+        }
+      }
+    ]
+  }
+}

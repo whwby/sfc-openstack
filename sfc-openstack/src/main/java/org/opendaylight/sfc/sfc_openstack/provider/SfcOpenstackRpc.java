@@ -82,7 +82,7 @@ public class SfcOpenstackRpc implements SfcOpenstackTestService, SfcOpenstackSer
         }
         SfcEntryBuilder sfcEntryBuilder = new SfcEntryBuilder();
         SfpEntries sfpEntries = input.getSfpEntries();
-        SfcEntryKey sfcEntryKey = new SfcEntryKey(input.getName());
+        SfcEntryKey sfcEntryKey = new SfcEntryKey(input.getSfcNsp());
         SfcEntry sfc = sfcEntryBuilder.setName(input.getName())
                 .setDescription(input.getDescription())
                 .setKey(sfcEntryKey)

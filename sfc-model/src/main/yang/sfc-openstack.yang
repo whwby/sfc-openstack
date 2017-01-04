@@ -114,7 +114,7 @@ module sfc-openstack {
     }
     container sfc-entries {
         list sfc-entry {
-            key "name";
+            key "sfc-nsp";
             uses sfc-base;
         }
     }

@@ -104,7 +104,7 @@ public class SfcOpenstackUtil {
             flowb.setId(new FlowId(flowKey))
                     .setTableId(tableId)
                     .setKey(new FlowKey(new FlowId(flowKey)))
-                    .setPriority(Integer.valueOf(FLOW_PRIORITY_CLASSIFIER))
+                    .setPriority(Integer.valueOf(FLOW_PRIORITY_CLASSIFIER)-10)
                     .setMatch(match)
                     .setInstructions(SfcOpenflowUtils.createInstructionsBuilder(SfcOpenflowUtils
                             .createActionsInstructionBuilder( pushNsh, loadNshMdtype, loadNshNp,
@@ -116,7 +116,7 @@ public class SfcOpenstackUtil {
             flowb.setId(new FlowId(flowKey))
                     .setTableId(tableId)
                     .setKey(new FlowKey(new FlowId(flowKey)))
-                    .setPriority(Integer.valueOf(FLOW_PRIORITY_CLASSIFIER))
+                    .setPriority(Integer.valueOf(FLOW_PRIORITY_CLASSIFIER)-10)
                     .setMatch(match)
                     .setInstructions(SfcOpenflowUtils.createInstructionsBuilder(SfcOpenflowUtils
                             .createActionsInstructionBuilder( pushNsh, loadNshMdtype, loadNshNp,
@@ -161,7 +161,7 @@ public class SfcOpenstackUtil {
         flowb.setId(new FlowId(flowKey))
                 .setTableId(tableId)
                 .setKey(new FlowKey(new FlowId(flowKey)))
-                .setPriority(Integer.valueOf(FLOW_PRIORITY_CLASSIFIER)+10)
+                .setPriority(Integer.valueOf(FLOW_PRIORITY_CLASSIFIER))
                 .setMatch(match)
                 .setInstructions(SfcOpenflowUtils.createInstructionsBuilder(SfcOpenflowUtils
                         .createActionsInstructionBuilder(popNsh,out))
@@ -180,7 +180,7 @@ public class SfcOpenstackUtil {
         flowb.setId(new FlowId(flowKey))
                 .setTableId(tableId)
                 .setKey(new FlowKey(new FlowId(flowKey)))
-                .setPriority(Integer.valueOf(FLOW_PRIORITY_CLASSIFIER+10))
+                .setPriority(Integer.valueOf(FLOW_PRIORITY_CLASSIFIER))
                 .setMatch(match)
                 .setInstructions(SfcOpenflowUtils.createInstructionsBuilder(SfcOpenflowUtils
                         .createActionsInstructionBuilder(out))
@@ -196,7 +196,7 @@ public class SfcOpenstackUtil {
         flowb.setId(new FlowId(flowKey))
                 .setTableId(tableId)
                 .setKey(new FlowKey(new FlowId(flowKey)))
-                .setPriority(Integer.valueOf(FLOW_PRIORITY_CLASSIFIER-10))
+                .setPriority(Integer.valueOf(FLOW_PRIORITY_CLASSIFIER-20))
                 .setInstructions(SfcOpenflowUtils.createInstructionsBuilder(SfcOpenflowUtils
                         .createActionsInstructionBuilder(normalAction))
                         .build());
