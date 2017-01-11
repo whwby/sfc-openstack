@@ -70,21 +70,6 @@ public class SfcOpenstackListener extends SfcOpenstackAbstractListener<SfcEntry>
         listenerRegistration = dataBroker.registerDataTreeChangeListener(treeId,this);
     }
 
-    private void sortSfEntryBasedOnIndex(List<SfpSfEntry> sfpSfEntry){
-        //bubble sort
-        int size = sfpSfEntry.size();
-        for (int i=0;i<size-1;i++) {
-            for (int j=0;j<size-i-1;j++) {
-                if(sfpSfEntry.get(j).getIndex() > sfpSfEntry.get(j+1).getIndex()){
-                    SfpSfEntry tmp = sfpSfEntry.get(j);
-                    sfpSfEntry.set(j,sfpSfEntry.get(j+1));
-                    sfpSfEntry.set(j+1,tmp);
-                }
-            }
-        }
-    }
-
-
     @Override
     public void add(SfcEntry sfcEntry) {
         if (sfcEntry != null) {
@@ -152,101 +137,6 @@ public class SfcOpenstackListener extends SfcOpenstackAbstractListener<SfcEntry>
     }
 
 
-    private void createSF2SF(SfpSfEntry preSfEntry,SfpSfEntry nextSfEntry, Long nsp, short nsi, SfcBridge sfcBridge) {
-
-        String intBridgeName = sfcBridge.getConvergeBridgeName();
-        String sfcBridgeName = sfcBridge.getTunnelBridgeName();
-
-        String preBridgeId = SfcOpenstackUtil.getBridgeID(intBridgeName,preSfEntry.getNodeIp());
-        String nextBridgeId = SfcOpenstackUtil.getBridgeID(intBridgeName,nextSfEntry.getNodeIp());
-        String preSfcBridgeId = SfcOpenstackUtil.getBridgeID(sfcBridgeName,preSfEntry.getNodeIp());
-        String nextSfcBridgeId = SfcOpenstackUtil.getBridgeID(sfcBridgeName,nextSfEntry.getNodeIp());
-        Boolean sameNode =  preBridgeId.equals(nextBridgeId);
-        LOG.info("IN openstack listener ADD  createSF2SF  bridges are: {} <> {}" ,preBridgeId,nextBridgeId);
-        if(sameNode){
-            Long prePort = SfcOpenstackUtil.getSfcPort(intBridgeName,
-                    preSfEntry.getNodeIp(), preSfEntry.getPortName());
-            Long nextPort = SfcOpenstackUtil.getSfcPort(intBridgeName,
-                    nextSfEntry.getNodeIp(),
-                    nextSfEntry.getPortName());
-            String inPortConnId = preBridgeId + ":" +  prePort;
-            Match  match = SfcOpenstackUtil.createNshMatch(nsp, nsi, inPortConnId);
-            SfcNshHeader sfcNshHeader = SfcOpenstackUtil.createSfcNshHeader(nsp,nsi,
-                    nextSfEntry.getSfMac().getValue());
-
-            LOG.info("IN openstack listener ADD createSF2SF  step1 is: {} <> {}" , preBridgeId,nextPort);
-            StringBuffer key = new StringBuffer();
-            key.append(preSfEntry.getPortName()).append("[>>]").append(nextSfEntry.getPortName()).append(nsi);
-            SfcOpenstackUtil.createToVNFIntFlow(preBridgeId,TABLE_INDEX_0,key.toString(),match,sfcNshHeader,nextPort);
-            storeFlowKey(key,nsp,preBridgeId);
-        }
-        else {
-            //preNode.br-int-->preNode.br-sfc-->nextNode.br-sfc-->nextNode.br-int
-            //preNode.br-int
-            Long prePort = SfcOpenstackUtil.getSfcPort(intBridgeName,
-                    preSfEntry.getNodeIp(), preSfEntry.getPortName());
-            Long sfPort = SfcOpenstackUtil.getSfcPort(intBridgeName,
-                    nextSfEntry.getNodeIp(),
-                    INT_2_SFC);
-            String inPortConnId = preBridgeId + ":" +  prePort;
-            Match  match = SfcOpenstackUtil.createNshMatch(nsp, nsi, inPortConnId);
-            SfcNshHeader sfcNshHeader = SfcOpenstackUtil.createSfcNshHeader(nsp,nsi, null);
-
-            LOG.info("IN openstack listener ADD createSF2SF step21 is: {} <> {}" , preBridgeId,sfPort);
-            StringBuffer key = new StringBuffer();
-            key.append(preSfEntry.getPortName()).append("[>>]").append(INT_2_SFC).append(nsi);
-            SfcOpenstackUtil.createOutputIntFlow(preBridgeId,TABLE_INDEX_0,key.toString(),match,sfPort);
-            storeFlowKey(key,nsp,preBridgeId);
-
-            //preNode.br-sfc
-            String nextTunnelPoint = TUNNEL_POINT + "-" + nextSfEntry.getNodeIp().split("\\.")[3];
-            Long sfcportIn = SfcOpenstackUtil.getSfcPort(sfcBridgeName,
-                    preSfEntry.getNodeIp(), SFC_2_INT);
-            Long sfcportOut = SfcOpenstackUtil.getSfcPort(sfcBridgeName,
-                    preSfEntry.getNodeIp(), nextTunnelPoint);
-
-            String inPortConnId2 = preSfcBridgeId + ":" +  sfcportIn;
-            Match  sfcmatch = SfcOpenstackUtil.createNshMatch(nsp, nsi, inPortConnId2);
-
-            StringBuffer key1 = new StringBuffer();
-            key1.append(SFC_2_INT).append("[>>]").append(nextTunnelPoint).append(nsi);
-            SfcOpenstackUtil.createOutputSfcFlow(preSfcBridgeId,TABLE_INDEX_0, key1.toString(),sfcmatch, sfcportOut);
-            storeFlowKey(key1,nsp,preSfcBridgeId);
-
-            //nextNode.br-sfc
-            String preTunnelPoint = TUNNEL_POINT + "-" + preSfEntry.getNodeIp().split("\\.")[3];
-            Long sfcportIn2 = SfcOpenstackUtil.getSfcPort(sfcBridgeName,
-                    nextSfEntry.getNodeIp(), SFC_2_INT);
-            Long sfcportOut2 = SfcOpenstackUtil.getSfcPort(sfcBridgeName,
-                    nextSfEntry.getNodeIp(), preTunnelPoint);
-
-            String inPortConnId3 = nextSfcBridgeId + ":" +  sfcportOut2;
-            Match  sfcmatch2 = SfcOpenstackUtil.createNshMatch(nsp, nsi, inPortConnId3);
-
-            StringBuffer key2 = new StringBuffer();
-            key2.append(preTunnelPoint).append("[>>]").append(SFC_2_INT).append(nsi);
-            SfcOpenstackUtil.createOutputSfcFlow(nextSfcBridgeId,TABLE_INDEX_0, key2.toString(),sfcmatch2, sfcportIn2);
-            storeFlowKey(key2,nsp,nextSfcBridgeId);
-
-            //nextNode.br-int
-            Long sfPort2 = SfcOpenstackUtil.getSfcPort(intBridgeName,
-                    nextSfEntry.getNodeIp(), INT_2_SFC);
-            Long nextPort = SfcOpenstackUtil.getSfcPort(intBridgeName,
-                    nextSfEntry.getNodeIp(), nextSfEntry.getPortName());
-
-            String inPortConnId4 = nextBridgeId + ":" +  sfPort2;
-            Match  match2 = SfcOpenstackUtil.createNshMatch(nsp, nsi, inPortConnId4);
-            SfcNshHeader sfcNshHeader2 = SfcOpenstackUtil.createSfcNshHeader(nsp, nsi,
-                    nextSfEntry.getSfMac().getValue());
-
-            LOG.info("IN openstack listener ADD createSF2SF step22 is: {} <> {}" ,nextBridgeId,nextPort);
-            StringBuffer key3 = new StringBuffer();
-            key3.append(INT_2_SFC).append("[>>]").append(nextSfEntry.getPortName()).append(nsi);
-            SfcOpenstackUtil.createToVNFIntFlow(nextBridgeId,TABLE_INDEX_0,key3.toString(),match2,sfcNshHeader2, nextPort);
-            storeFlowKey(key3,nsp,nextBridgeId);
-        }
-    }
-
     @Override
     public void remove(SfcEntry sfcEntry) {
         if (sfcEntry != null) {
@@ -260,7 +150,7 @@ public class SfcOpenstackListener extends SfcOpenstackAbstractListener<SfcEntry>
                 LOG.info("Deleting Sfc entry info: {}>>>{}>>>{}", s[2],s[1],s[0]);
                 // key|nsh|bridgeName|nodeIp
                 if (s[1].equals(sfcEntry.getSfcNsp().toString())) {
-                    SfcOpenstackUtil.deleteFlow(s[2], s[0]);
+                    SfcOpenstackUtil.deleteFlow(s[2], (s[0]+ "|" + s[1]));
                     flowListIterator.remove();
                 }
             }
@@ -306,10 +196,11 @@ public class SfcOpenstackListener extends SfcOpenstackAbstractListener<SfcEntry>
 
             LOG.info("IN openstack listener ADD createSource2SF step1 is: {} <> {}" , sBridgeId,sfport);
             StringBuffer key = new StringBuffer();
-            key.append(source.getPortName()).append("[>>]").append(sfpSfEntry.getPortName()).append(nsi);
+            key.append(source.getPortName()).append("[>>]").append(sfpSfEntry.getPortName()).append(nsi)
+                    .append("|").append(nsp);
             SfcOpenstackUtil.createClassifierIntFlow(sBridgeId,TABLE_INDEX_0,key.toString(),
                     match,sfcNshHeader,sfport, sameNode);
-            storeFlowKey(key,nsp,sBridgeId);
+            storeFlowKey(key,sBridgeId);
         }
         else {
             //source.br-int->>source.br-sfc-->sfpsfentry.br-sfc-->sfpsfentry.br-int
@@ -323,10 +214,11 @@ public class SfcOpenstackListener extends SfcOpenstackAbstractListener<SfcEntry>
 
             LOG.info("IN openstack listener ADD createSource2SF step21 is: {} <> {}" , sBridgeId,port);
             StringBuffer key = new StringBuffer();
-            key.append(source.getPortName()).append("[>>]").append(INT_2_SFC).append(nsi);
+            key.append(source.getPortName()).append("[>>]").append(INT_2_SFC).append(nsi)
+                    .append("|").append(nsp);
             SfcOpenstackUtil.createClassifierIntFlow(sBridgeId,TABLE_INDEX_0,key.toString(),
                     match,sfcNshHeader,port,sameNode);
-            storeFlowKey(key,nsp,sBridgeId);
+            storeFlowKey(key,sBridgeId);
 
             //source.br-sfc
 
@@ -340,9 +232,10 @@ public class SfcOpenstackListener extends SfcOpenstackAbstractListener<SfcEntry>
             Match  sfcmatch = SfcOpenstackUtil.createNshMatch(nsp, nsi, inPortConnId);
 
             StringBuffer key1 = new StringBuffer();
-            key1.append(SFC_2_INT).append("[>>]").append(sfTunnelPoint).append(nsi);
+            key1.append(SFC_2_INT).append("[>>]").append(sfTunnelPoint).append(nsi)
+                    .append("|").append(nsp);
             SfcOpenstackUtil.createOutputSfcFlow(sSfcBridgeId,TABLE_INDEX_0, key1.toString(),sfcmatch, sfcportOut);
-            storeFlowKey(key1,nsp,sSfcBridgeId);
+            storeFlowKey(key1,sSfcBridgeId);
 
             //sfpsfentry.br-sfc
             String sTunnelPoint = TUNNEL_POINT + "-" + source.getNodeIp().split("\\.")[3];
@@ -355,9 +248,10 @@ public class SfcOpenstackListener extends SfcOpenstackAbstractListener<SfcEntry>
             Match  sfcmatch2 = SfcOpenstackUtil.createNshMatch(nsp, nsi, inPortConnId2);
 
             StringBuffer key2 = new StringBuffer();
-            key2.append(sTunnelPoint).append("[>>]").append(SFC_2_INT).append(nsi);
+            key2.append(sTunnelPoint).append("[>>]").append(SFC_2_INT).append(nsi)
+                    .append("|").append(nsp);
             SfcOpenstackUtil.createOutputSfcFlow(sfSfcBridgeId,TABLE_INDEX_0, key2.toString(),sfcmatch2, sfcportIn2);
-            storeFlowKey(key2,nsp,sfSfcBridgeId);
+            storeFlowKey(key2,sfSfcBridgeId);
 
             //sfpsfentry.br-int
             Long sfportIn = SfcOpenstackUtil.getSfcPort(intBridgeName,
@@ -372,9 +266,110 @@ public class SfcOpenstackListener extends SfcOpenstackAbstractListener<SfcEntry>
 
             LOG.info("IN openstack listener ADD createSource2SF step22 is: {} <> {}" ,sfBridgeId,sfport);
             StringBuffer key3 = new StringBuffer();
-            key3.append(INT_2_SFC).append("[>>]").append(sfpSfEntry.getPortName()).append(nsi);
+            key3.append(INT_2_SFC).append("[>>]").append(sfpSfEntry.getPortName()).append(nsi)
+                    .append("|").append(nsp);
             SfcOpenstackUtil.createToVNFIntFlow(sfBridgeId,TABLE_INDEX_0,key3.toString(),sfmatch,sfcNshHeader2, sfport);
-            storeFlowKey(key3,nsp,sfBridgeId);
+            storeFlowKey(key3,sfBridgeId);
+        }
+    }
+
+    private void createSF2SF(SfpSfEntry preSfEntry,SfpSfEntry nextSfEntry, Long nsp, short nsi, SfcBridge sfcBridge) {
+
+        String intBridgeName = sfcBridge.getConvergeBridgeName();
+        String sfcBridgeName = sfcBridge.getTunnelBridgeName();
+
+        String preBridgeId = SfcOpenstackUtil.getBridgeID(intBridgeName,preSfEntry.getNodeIp());
+        String nextBridgeId = SfcOpenstackUtil.getBridgeID(intBridgeName,nextSfEntry.getNodeIp());
+        String preSfcBridgeId = SfcOpenstackUtil.getBridgeID(sfcBridgeName,preSfEntry.getNodeIp());
+        String nextSfcBridgeId = SfcOpenstackUtil.getBridgeID(sfcBridgeName,nextSfEntry.getNodeIp());
+        Boolean sameNode =  preBridgeId.equals(nextBridgeId);
+        LOG.info("IN openstack listener ADD  createSF2SF  bridges are: {} <> {}" ,preBridgeId,nextBridgeId);
+        if(sameNode){
+            Long prePort = SfcOpenstackUtil.getSfcPort(intBridgeName,
+                    preSfEntry.getNodeIp(), preSfEntry.getPortName());
+            Long nextPort = SfcOpenstackUtil.getSfcPort(intBridgeName,
+                    nextSfEntry.getNodeIp(),
+                    nextSfEntry.getPortName());
+            String inPortConnId = preBridgeId + ":" +  prePort;
+            Match  match = SfcOpenstackUtil.createNshMatch(nsp, nsi, inPortConnId);
+            SfcNshHeader sfcNshHeader = SfcOpenstackUtil.createSfcNshHeader(nsp,nsi,
+                    nextSfEntry.getSfMac().getValue());
+
+            LOG.info("IN openstack listener ADD createSF2SF  step1 is: {} <> {}" , preBridgeId,nextPort);
+            StringBuffer key = new StringBuffer();
+            key.append(preSfEntry.getPortName()).append("[>>]").append(nextSfEntry.getPortName()).append(nsi)
+                    .append("|").append(nsp);
+            SfcOpenstackUtil.createToVNFIntFlow(preBridgeId,TABLE_INDEX_0,key.toString(),match,sfcNshHeader,nextPort);
+            storeFlowKey(key,preBridgeId);
+        }
+        else {
+            //preNode.br-int-->preNode.br-sfc-->nextNode.br-sfc-->nextNode.br-int
+            //preNode.br-int
+            Long prePort = SfcOpenstackUtil.getSfcPort(intBridgeName,
+                    preSfEntry.getNodeIp(), preSfEntry.getPortName());
+            Long sfPort = SfcOpenstackUtil.getSfcPort(intBridgeName,
+                    nextSfEntry.getNodeIp(),
+                    INT_2_SFC);
+            String inPortConnId = preBridgeId + ":" +  prePort;
+            Match  match = SfcOpenstackUtil.createNshMatch(nsp, nsi, inPortConnId);
+            SfcNshHeader sfcNshHeader = SfcOpenstackUtil.createSfcNshHeader(nsp,nsi, null);
+
+            LOG.info("IN openstack listener ADD createSF2SF step21 is: {} <> {}" , preBridgeId,sfPort);
+            StringBuffer key = new StringBuffer();
+            key.append(preSfEntry.getPortName()).append("[>>]").append(INT_2_SFC).append(nsi)
+                    .append("|").append(nsp);
+            SfcOpenstackUtil.createOutputIntFlow(preBridgeId,TABLE_INDEX_0,key.toString(),match,sfPort);
+            storeFlowKey(key,preBridgeId);
+
+            //preNode.br-sfc
+            String nextTunnelPoint = TUNNEL_POINT + "-" + nextSfEntry.getNodeIp().split("\\.")[3];
+            Long sfcportIn = SfcOpenstackUtil.getSfcPort(sfcBridgeName,
+                    preSfEntry.getNodeIp(), SFC_2_INT);
+            Long sfcportOut = SfcOpenstackUtil.getSfcPort(sfcBridgeName,
+                    preSfEntry.getNodeIp(), nextTunnelPoint);
+
+            String inPortConnId2 = preSfcBridgeId + ":" +  sfcportIn;
+            Match  sfcmatch = SfcOpenstackUtil.createNshMatch(nsp, nsi, inPortConnId2);
+
+            StringBuffer key1 = new StringBuffer();
+            key1.append(SFC_2_INT).append("[>>]").append(nextTunnelPoint).append(nsi)
+                    .append("|").append(nsp);
+            SfcOpenstackUtil.createOutputSfcFlow(preSfcBridgeId,TABLE_INDEX_0, key1.toString(),sfcmatch, sfcportOut);
+            storeFlowKey(key1,preSfcBridgeId);
+
+            //nextNode.br-sfc
+            String preTunnelPoint = TUNNEL_POINT + "-" + preSfEntry.getNodeIp().split("\\.")[3];
+            Long sfcportIn2 = SfcOpenstackUtil.getSfcPort(sfcBridgeName,
+                    nextSfEntry.getNodeIp(), SFC_2_INT);
+            Long sfcportOut2 = SfcOpenstackUtil.getSfcPort(sfcBridgeName,
+                    nextSfEntry.getNodeIp(), preTunnelPoint);
+
+            String inPortConnId3 = nextSfcBridgeId + ":" +  sfcportOut2;
+            Match  sfcmatch2 = SfcOpenstackUtil.createNshMatch(nsp, nsi, inPortConnId3);
+
+            StringBuffer key2 = new StringBuffer();
+            key2.append(preTunnelPoint).append("[>>]").append(SFC_2_INT).append(nsi)
+                    .append("|").append(nsp);
+            SfcOpenstackUtil.createOutputSfcFlow(nextSfcBridgeId,TABLE_INDEX_0, key2.toString(),sfcmatch2, sfcportIn2);
+            storeFlowKey(key2,nextSfcBridgeId);
+
+            //nextNode.br-int
+            Long sfPort2 = SfcOpenstackUtil.getSfcPort(intBridgeName,
+                    nextSfEntry.getNodeIp(), INT_2_SFC);
+            Long nextPort = SfcOpenstackUtil.getSfcPort(intBridgeName,
+                    nextSfEntry.getNodeIp(), nextSfEntry.getPortName());
+
+            String inPortConnId4 = nextBridgeId + ":" +  sfPort2;
+            Match  match2 = SfcOpenstackUtil.createNshMatch(nsp, nsi, inPortConnId4);
+            SfcNshHeader sfcNshHeader2 = SfcOpenstackUtil.createSfcNshHeader(nsp, nsi,
+                    nextSfEntry.getSfMac().getValue());
+
+            LOG.info("IN openstack listener ADD createSF2SF step22 is: {} <> {}" ,nextBridgeId,nextPort);
+            StringBuffer key3 = new StringBuffer();
+            key3.append(INT_2_SFC).append("[>>]").append(nextSfEntry.getPortName()).append(nsi)
+                    .append("|").append(nsp);
+            SfcOpenstackUtil.createToVNFIntFlow(nextBridgeId,TABLE_INDEX_0,key3.toString(),match2,sfcNshHeader2, nextPort);
+            storeFlowKey(key3,nextBridgeId);
         }
     }
 
@@ -400,9 +395,10 @@ public class SfcOpenstackListener extends SfcOpenstackAbstractListener<SfcEntry>
                     destination.getPortName());
             LOG.info("IN openstack listener ADD createSF2Destination step1 is: {} <> {}" , dBridgeId,dport);
             StringBuffer key = new StringBuffer();
-            key.append(sfpSfEntry.getPortName()).append("[>>]").append(destination.getPortName()).append(nsi);
+            key.append(sfpSfEntry.getPortName()).append("[>>]").append(destination.getPortName()).append(nsi)
+                    .append("|").append(nsp);
             SfcOpenstackUtil.createToDestinationIntFlow(dBridgeId,TABLE_INDEX_0,key.toString(),match,dport);
-            storeFlowKey(key,nsp,dBridgeId);
+            storeFlowKey(key,dBridgeId);
         }
         else {
             //sfpsfentry.br-int-->sfpsfentry.br-sfc-->destination.br-sfc-->destination.br-int
@@ -417,9 +413,10 @@ public class SfcOpenstackListener extends SfcOpenstackAbstractListener<SfcEntry>
 
             LOG.info("IN openstack listener ADD createSF2Destination step21 is: {} <> {}" ,sfBridgeId,port);
             StringBuffer key = new StringBuffer();
-            key.append(sfpSfEntry.getPortName()).append("[>>]").append(INT_2_SFC).append(nsi);
+            key.append(sfpSfEntry.getPortName()).append("[>>]").append(INT_2_SFC).append(nsi)
+                    .append("|").append(nsp);
             SfcOpenstackUtil.createOutputIntFlow(sfBridgeId,TABLE_INDEX_0,key.toString(),sfmatch,port);
-            storeFlowKey(key,nsp,sfBridgeId);
+            storeFlowKey(key,sfBridgeId);
 
             //sfpsfentry.br-sfc
             String sfTunnelPoint = TUNNEL_POINT + "-" + destination.getNodeIp().split("\\.")[3];
@@ -431,9 +428,10 @@ public class SfcOpenstackListener extends SfcOpenstackAbstractListener<SfcEntry>
             Match  sfcmatch = SfcOpenstackUtil.createNshMatch(nsp, nsi, inPortConnId2);
 
             StringBuffer key1 = new StringBuffer();
-            key1.append(SFC_2_INT).append("[>>]").append(sfTunnelPoint).append(nsi);
+            key1.append(SFC_2_INT).append("[>>]").append(sfTunnelPoint).append(nsi)
+                    .append("|").append(nsp);
             SfcOpenstackUtil.createOutputSfcFlow(sfSfcBridgeId,TABLE_INDEX_0, key1.toString(), sfcmatch, sfcportOut);
-            storeFlowKey(key1,nsp,sfSfcBridgeId);
+            storeFlowKey(key1,sfSfcBridgeId);
 
 
             //destination.br-sfc
@@ -446,9 +444,10 @@ public class SfcOpenstackListener extends SfcOpenstackAbstractListener<SfcEntry>
             Match  sfcmatch2 = SfcOpenstackUtil.createNshMatch(nsp, nsi, inPortConnId3);
 
             StringBuffer key2 = new StringBuffer();
-            key2.append(dTunnelPoint).append("[>>]").append(SFC_2_INT).append(nsi);
+            key2.append(dTunnelPoint).append("[>>]").append(SFC_2_INT).append(nsi)
+                    .append("|").append(nsp);
             SfcOpenstackUtil.createOutputSfcFlow(dSfcBridgeId,TABLE_INDEX_0, key2.toString(),sfcmatch2, sfcportIn2);
-            storeFlowKey(key2,nsp,dSfcBridgeId);
+            storeFlowKey(key2,dSfcBridgeId);
 
             //destination.br-int
             Long sfcport = SfcOpenstackUtil.getSfcPort(intBridgeName,
@@ -461,9 +460,10 @@ public class SfcOpenstackListener extends SfcOpenstackAbstractListener<SfcEntry>
 
             LOG.info("IN openstack listener ADD createSF2Destination step22 is: {} <> {}" , dBridgeId,dport);
             StringBuffer key3 = new StringBuffer();
-            key3.append(INT_2_SFC).append("[>>]").append(destination.getPortName()).append(nsi);
+            key3.append(INT_2_SFC).append("[>>]").append(destination.getPortName()).append(nsi)
+                    .append("|").append(nsp);
             SfcOpenstackUtil.createToDestinationIntFlow(dBridgeId,TABLE_INDEX_0,key3.toString(),dmatch,dport);
-            storeFlowKey(key3,nsp,dBridgeId);
+            storeFlowKey(key3,dBridgeId);
         }
     }
 
@@ -483,23 +483,39 @@ public class SfcOpenstackListener extends SfcOpenstackAbstractListener<SfcEntry>
     }
 
     private void createDefaultIntFlow(SfpPoint sfpPoint, Long nsp) {
-        StringBuffer key = new StringBuffer().append("br-int").append("[>>]").append("normal");
+        StringBuffer key = new StringBuffer().append("br-int").append("[>>]").append("normal")
+                .append("|").append(nsp);
         String bridgeName = "br-int";
         String bridgeId = SfcOpenstackUtil.getBridgeID(bridgeName,sfpPoint.getNodeIp());
         SfcOpenstackUtil.createNormalIntFlow(bridgeId,TABLE_INDEX_0,key.toString());
-        storeFlowKey(key,nsp,bridgeId);
+        storeFlowKey(key,bridgeId);
     }
 
     private void createDefaultSfcFlow(SfpPoint sfpPoint,Long nsp) {
-        StringBuffer key1 = new StringBuffer().append("br-sfc").append("[>>]").append("drop");
+        StringBuffer key1 = new StringBuffer().append("br-sfc").append("[>>]").append("drop")
+                .append("|").append(nsp);
         String bridgeName = "br-sfc";
         String bridgeId = SfcOpenstackUtil.getBridgeID(bridgeName,sfpPoint.getNodeIp());
         SfcOpenstackUtil.createDropSfcFlow(bridgeId,TABLE_INDEX_0, key1.toString());
-        storeFlowKey(key1,nsp,bridgeId);
+        storeFlowKey(key1,bridgeId);
     }
 
-    private void storeFlowKey(StringBuffer key,Long nsp, String bridgeId){
-        key.append("|").append(nsp).append("|").append(bridgeId);
+    private void sortSfEntryBasedOnIndex(List<SfpSfEntry> sfpSfEntry){
+        //bubble sort
+        int size = sfpSfEntry.size();
+        for (int i=0;i<size-1;i++) {
+            for (int j=0;j<size-i-1;j++) {
+                if(sfpSfEntry.get(j).getIndex() > sfpSfEntry.get(j+1).getIndex()){
+                    SfpSfEntry tmp = sfpSfEntry.get(j);
+                    sfpSfEntry.set(j,sfpSfEntry.get(j+1));
+                    sfpSfEntry.set(j+1,tmp);
+                }
+            }
+        }
+    }
+
+    private void storeFlowKey(StringBuffer key, String bridgeId){
+        key.append("|").append(bridgeId);
         flowList.add(key.toString());
     }
 

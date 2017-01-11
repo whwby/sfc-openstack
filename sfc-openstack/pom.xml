@@ -94,6 +94,7 @@
                     <instructions>
                         <Export-Package>
                             org.opendaylight.sfc.sfc_openstack.provider.*;
+                            org.opendaylight.sfc.util.openflow.*;
                         </Export-Package>
                         <Bundle-Name>${project.groupId}.${project.artifactId}</Bundle-Name>
                     </instructions>
