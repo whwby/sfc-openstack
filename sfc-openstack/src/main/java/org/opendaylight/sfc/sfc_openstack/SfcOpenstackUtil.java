@@ -367,9 +367,11 @@ public class SfcOpenstackUtil {
     }
 
 
-    public static Match createMatch(String srcIp, String dstIp, String protocol, int vlanId, int port) {
+    public static Match createMatch(String ConnId, String srcIp, String dstIp, String protocol, int vlanId, int port) {
         MatchBuilder matchBuilder = new MatchBuilder();
+        NodeConnectorId nodeConnId = new NodeConnectorId(ConnId);
 
+        SfcOpenflowUtils.addMatchInPort(matchBuilder,nodeConnId);
         SfcOpenflowUtils.addMatchEtherType(matchBuilder, SfcOpenflowUtils.ETHERTYPE_IPV4);
         if (srcIp != null) {
             String s[] = srcIp.split("/");
@@ -382,8 +384,12 @@ public class SfcOpenstackUtil {
         if (protocol != null) {
             if (protocol.toUpperCase().contains("ICMP")) {
                 SfcOpenflowUtils.addMatchIpProtocol(matchBuilder, IP_PROTOCOL_ICMP);
-            } else if (protocol.toUpperCase().contains("IP")) {
-
+            }else if (protocol.toUpperCase().contains("SSH")) {
+                SfcOpenflowUtils.addMatchIpProtocol(matchBuilder, IP_PROTOCOL_TCP);
+                SfcOpenflowUtils.addMatchDstTcpPort(matchBuilder, 22);
+            } else if (protocol.toUpperCase().contains("HTTP")) {
+                SfcOpenflowUtils.addMatchIpProtocol(matchBuilder, IP_PROTOCOL_TCP);
+                SfcOpenflowUtils.addMatchDstTcpPort(matchBuilder, 80);
             } else if (protocol.toUpperCase().contains("TCP")) {
                 SfcOpenflowUtils.addMatchIpProtocol(matchBuilder, IP_PROTOCOL_TCP);
                 if (port != -1) {
@@ -394,6 +400,7 @@ public class SfcOpenstackUtil {
                 if (port != -1) {
                     SfcOpenflowUtils.addMatchDstUdpPort(matchBuilder, port);
                 }
+            } else {
             }
         }
         if(vlanId != -1){
@@ -403,13 +410,13 @@ public class SfcOpenstackUtil {
     }
 
     public static Match createMatch(String srcIp, String dstIp, String protocol) {
-        return createMatch(srcIp,dstIp,protocol,-1,-1);
+        return createMatch(null,srcIp,dstIp,protocol,-1,-1);
     }
-    public static Match createMatch(String srcIp, String dstIp, String protocol,int port) {
-        return createMatch(srcIp,dstIp,protocol,-1,port);
+    public static Match createMatch(String ConnId, String srcIp, String dstIp, String protocol,int port) {
+        return createMatch(ConnId,srcIp,dstIp,protocol,-1,port);
     }
     public static Match createMatch(String srcIp, String dstIp) {
-        return createMatch(srcIp,dstIp,null,0,-1);
+        return createMatch(null,srcIp,dstIp,null,0,-1);
     }
 
     public static Match createNshMatch(Long nsp, short nsi, String ConnId) {

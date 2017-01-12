@@ -186,7 +186,9 @@ public class SfcOpenstackListener extends SfcOpenstackAbstractListener<SfcEntry>
         Boolean sameNode = sBridgeId.equals(sfBridgeId);
         LOG.info("IN openstack listener ADD  createSource2SF  bridges are: {} <> {}" ,sBridgeId,sfBridgeId);
         if (sameNode) {
-            Match  match = SfcOpenstackUtil.createMatch(sfcMatch.getSrcIp(), sfcMatch.getDstIp(),
+            Long sPort = SfcOpenstackUtil.getSfcPort(intBridgeName,source.getNodeIp(),source.getPortName());
+            String sInPortConnId = sBridgeId + ":" + sPort;
+            Match  match = SfcOpenstackUtil.createMatch(sInPortConnId, sfcMatch.getSrcIp(), sfcMatch.getDstIp(),
                     sfcMatch.getProtocolName(),sfcMatch.getPort().getValue());
             Long sfport = SfcOpenstackUtil.getSfcPort(intBridgeName,
                     sfpSfEntry.getNodeIp(),
@@ -205,7 +207,9 @@ public class SfcOpenstackListener extends SfcOpenstackAbstractListener<SfcEntry>
         else {
             //source.br-int->>source.br-sfc-->sfpsfentry.br-sfc-->sfpsfentry.br-int
             //source.br-int
-            Match  match = SfcOpenstackUtil.createMatch(sfcMatch.getSrcIp(),sfcMatch.getDstIp(),
+            Long sPort = SfcOpenstackUtil.getSfcPort(intBridgeName,source.getNodeIp(),source.getPortName());
+            String sInPortConnId = sBridgeId + ":" + sPort;
+            Match  match = SfcOpenstackUtil.createMatch(sInPortConnId,sfcMatch.getSrcIp(),sfcMatch.getDstIp(),
                     sfcMatch.getProtocolName(),sfcMatch.getPort().getValue());
             Long port = SfcOpenstackUtil.getSfcPort(intBridgeName,
                     source.getNodeIp(),
